@@ -115,6 +115,7 @@ check_busy_files "$BUILD"
 clean_old_session
 
 prepare_host
+# Don't check update for now - DEBUG
 check_update
 prepare_toolchains
 prepare_packages
