@@ -193,7 +193,28 @@ build_linux() {
 	info_msg "Build linux..."
 	echo "${KERNEL_COMPILER} $KERNEL_COMPILER_PATH"
 	export PATH=$KERNEL_COMPILER_PATH:$PATH
-	make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" $LINUX_DEFCONFIG $LINUX_DEFCONFIG_FRAGMENT CONFIG_SHELL="bash"
+	make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" $LINUX_DEFCONFIG CONFIG_SHELL="bash"
+	# Merge config fragment if specified
+	if [ -n "$LINUX_DEFCONFIG_FRAGMENT" ]; then
+		FRAGMENT_FILE=""
+		# Check if fragment is an absolute path
+		if [ -f "$LINUX_DEFCONFIG_FRAGMENT" ]; then
+			FRAGMENT_FILE="$LINUX_DEFCONFIG_FRAGMENT"
+		# Check if fragment is in config/boards directory
+		elif [ -f "$ROOT/config/boards/$LINUX_DEFCONFIG_FRAGMENT" ]; then
+			FRAGMENT_FILE="$ROOT/config/boards/$LINUX_DEFCONFIG_FRAGMENT"
+		# Check if fragment is in kernel source directory
+		elif [ -f "$LINUX_VENDOR_DIR/$LINUX_DEFCONFIG_FRAGMENT" ]; then
+			FRAGMENT_FILE="$LINUX_VENDOR_DIR/$LINUX_DEFCONFIG_FRAGMENT"
+		fi
+		if [ -n "$FRAGMENT_FILE" ] && [ -f "$FRAGMENT_FILE" ]; then
+			info_msg "Merging config fragment: $FRAGMENT_FILE"
+			cd "$LINUX_VENDOR_DIR"
+			$LINUX_VENDOR_DIR/scripts/kconfig/merge_config.sh -m -O "$LINUX_VENDOR_DIR" "$LINUX_VENDOR_DIR/.config" "$FRAGMENT_FILE"
+		else
+			warning_msg "Config fragment not found: $LINUX_DEFCONFIG_FRAGMENT"
+		fi
+	fi
 	if [ "${BUILD_LINUX_DTBS_ONLY:-no}" == "yes" ]; then
 		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" dtbs $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
 	else
