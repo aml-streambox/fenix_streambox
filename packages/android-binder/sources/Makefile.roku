@@ -1,0 +1,72 @@
+################################################################################
+# Device/Makefile
+#
+# This Makefile builds the libs
+#
+################################################################################
+OUT_ROOT ?= dist
+
+DEPENDS := $(addsuffix /build, $(addprefix $(OUT_ROOT)/../../, $(DEPENDS)))
+override LDFLAGS += $(addprefix -L, $(DEPENDS))
+
+LOCAL_PATH = .
+
+CFLAGS += -Wall -Wno-unknown-pragmas -Wno-format -DHAVE_PTHREADS -DHAVE_ANDROID_OS=1
+
+################################################################################
+#src files
+################################################################################
+binder_SRCS  = $(wildcard binder/*.cpp)
+binder_SRCS += $(wildcard utils/*.cpp)
+binder_SRCS += $(wildcard cutils/*.c)
+svcmgr_SRCS = $(wildcard servicemgr/*.c)
+
+#TODO: Add more include directories here, if necessary.
+INCLUDES += \
+	-I$(LOCAL_PATH)/include \
+	-I$(ROKU_3PARTY_INCLUDE_DIRS)/../usr/include \
+	$(NULL)
+
+ALL_SRCS = $(binder_SRCS) $(svcmgr_SRCS)
+
+include $(ROKU_PORT_COMMON_DIR)/build/define_target.mk
+
+comma = ,
+$(eval $(call DEFINE_TARGET,libbinder.so,$(binder_SRCS),,$(LDFLAGS) -lstdc++ -lpthread -ldl -lm -fPIC -shared -Wl$(comma)-z$(comma)defs -Wl$(comma)--build-id,lib))
+$(eval $(call DEFINE_TARGET,servicemanager,$(svcmgr_SRCS),,$(LDFLAGS) -lstdc++ -lpthread -Wl$(comma)-z$(comma)defs -Wl$(comma)--build-id,bin))
+
+# ---------------------------------------------------------------------
+#  Build rules
+all: $(VENDOR_ALL_TARGETS) $(NATIVE_ALL_TARGETS)
+# Compile .c file.
+# Simultaneously create .d file (see http://make.mad-scientist.net/papers/advanced-auto-dependency-generation).
+$(OUT_ROOT)/%.o: %.c $(OUT_ROOT)/%.d
+	mkdir -p $(dir $@)
+	$(CC) -MT $@ -MMD -MP -MF $(OUT_ROOT)/$*.Td $(CFLAGS) $(INCLUDES) -c -o $@ $<
+	mv -f $(OUT_ROOT)/$*.Td $(OUT_ROOT)/$*.d && touch $@
+# Compile .cpp file.
+# Simultaneously create .d file (see http://make.mad-scientist.net/papers/advanced-auto-dependency-generation).
+$(OUT_ROOT)/%.o: %.cpp $(OUT_ROOT)/%.d
+	@mkdir -p $(dir $@)
+	$(CXX) -MT $@ -MMD -MP -MF $(OUT_ROOT)/$*.Td $(CFLAGS) $(INCLUDES) -c -o $@ $<
+	mv -f $(OUT_ROOT)/$*.Td $(OUT_ROOT)/$*.d && touch $@
+$(OUT_ROOT)/%.d: ;
+.PRECIOUS: $(OUT_ROOT)/%.d
+.PHONY: clean distclean install
+
+include $(wildcard $(patsubst %,$(OUT_ROOT)/%.d,$(basename $(binder_SRCS))))
+include $(wildcard $(patsubst %,$(OUT_ROOT)/%.d,$(basename $(svcmgr_SRCS))))
+
+clean:
+	-rm -rf $(OUT_ROOT) $(CLEAN_FILES)
+	mkdir -p $(OUT_ROOT)
+
+distclean:
+	-rm -rf $(DESTDIR)/usr/lib/libbinder.so
+	-rm -rf $(DESTDIR)/usr/bin/servicemanager
+
+install:
+	mkdir -p $(DESTDIR)/usr/lib
+	cp $(OUT_ROOT)/libbinder.so  $(DESTDIR)/usr/lib/
+	mkdir -p $(DESTDIR)/usr/bin
+	cp $(OUT_ROOT)/servicemanager  $(DESTDIR)/usr/bin/

@@ -1,0 +1,13 @@
+#ifndef __AML_AUDIO_VERSION_H__
+#define __AML_AUDIO_VERSION_H__
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+const char libVersion_audio_hal[]= @version@;
+
+#ifdef  __cplusplus
+}
+#endif
+#endif /*__AML_VERSION_H__*/
