@@ -48,12 +48,35 @@ EOF
 	export TARGET_DIR="$pkgdir"
 	export STRIP="${CROSS_COMPILE}strip"
 	
-	# For aarch64, disable NEON support (NEON flags are for ARM 32-bit only)
-	if [ "$DISTRIB_ARCH" = "aarch64" ]; then
-		export TOOLCHAIN_NEON_SUPPORT=n
-	else
-		export TOOLCHAIN_NEON_SUPPORT=y
+	# Set cross-compiler environment variables for Makefile
+	# CROSS_COMPILE is set by Fenix build system (e.g., "aarch64-linux-gnu-")
+	export CC="${CROSS_COMPILE}gcc"
+	export CXX="${CROSS_COMPILE}g++"
+	
+	# Verify cross-compiler exists
+	if ! command -v "$CC" >/dev/null 2>&1; then
+		# Try to detect based on DISTRIB_ARCH if CROSS_COMPILE not set
+		if [ -z "$CROSS_COMPILE" ]; then
+			if [ "$DISTRIB_ARCH" = "aarch64" ]; then
+				CROSS_COMPILE="aarch64-linux-gnu-"
+			elif [ "$DISTRIB_ARCH" = "armhf" ] || [ "$DISTRIB_ARCH" = "arm" ]; then
+				CROSS_COMPILE="arm-linux-gnueabihf-"
+			fi
+			export CC="${CROSS_COMPILE}gcc"
+			export CXX="${CROSS_COMPILE}g++"
+		fi
+		
+		if ! command -v "$CC" >/dev/null 2>&1; then
+			error_msg "Cross-compiler not found: $CC"
+			error_msg "CROSS_COMPILE is: '${CROSS_COMPILE}'"
+			error_msg "Please ensure cross-compiler is installed: sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu"
+			return 1
+		fi
 	fi
+	info_msg "Using cross-compiler: CC=$CC, CXX=$CXX"
+	
+	# Keep NEON support enabled (NEON is available on aarch64, flags will be handled by Makefile)
+	export TOOLCHAIN_NEON_SUPPORT=y
 
 	# Create staging directory
 	mkdir -p "$STAGING_DIR/usr/lib"
@@ -71,7 +94,9 @@ EOF
 
 	# Build libamaudioutils.so and libcutils.so
 	info_msg "Building ${PKG_NAME}..."
-	make clean 2>/dev/null || true
+	# Pass CC and CXX explicitly to make to ensure cross-compiler is used
+	# Note: Makefile uses CC for both C and C++ files, so we set both
+	make clean CC="$CC" CXX="$CXX" 2>/dev/null || true
 	
 	# Re-create staging directory after clean (clean removes it) and copy android-binder headers
 	mkdir -p "$STAGING_DIR/usr/include/cutils"
@@ -86,11 +111,24 @@ EOF
 		fi
 	fi
 	
-	# For aarch64, disable NEON support (NEON flags -mfpu=neon are for ARM 32-bit only)
-	# Patch Makefile to remove NEON flags from CFLAGS and add staging include path
+	# Patch Makefile to use CXX for .cpp files (Makefile incorrectly uses CC for C++ files)
+	# The Makefile uses $(CC) for both .c and .cpp files, but should use $(CXX) for .cpp
+	if ! grep -q 'CXX \?=' "$PKG_BUILD_DIR/Makefile"; then
+		# Add CXX variable if not defined
+		sed -i '1i CXX ?= $(CC)' "$PKG_BUILD_DIR/Makefile"
+	fi
+	# Patch .cpp rule to use $(CXX) instead of $(CC)
+	sed -i 's/^\t\$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $</\t$(CXX) -c $(CFLAGS) $(CXXFLAGS) -o $@ $</' "$PKG_BUILD_DIR/Makefile"
+	
+	# Keep NEON support enabled - Makefile will add -mfpu=neon -D_USE_NEON via TOOLCHAIN_NEON_SUPPORT=y
+	# For aarch64, -mfpu=neon is not valid (NEON is always available), but -D_USE_NEON is fine
+	# Patch Makefile to remove only -mfpu=neon for aarch64, keep -D_USE_NEON
 	if [ "$DISTRIB_ARCH" = "aarch64" ]; then
-		# Remove NEON flags from CFLAGS line in Makefile
-		sed -i 's/ $(TOOLCHAIN_NEON_FLAGS)//g' "$PKG_BUILD_DIR/Makefile"
+		# Replace -mfpu=neon -D_USE_NEON with just -D_USE_NEON (keep NEON define, remove invalid flag)
+		sed -i 's/-mfpu=neon -D_USE_NEON/-D_USE_NEON/g' "$PKG_BUILD_DIR/Makefile"
+		sed -i 's/-mfpu=neon//g' "$PKG_BUILD_DIR/Makefile"
+		sed -i 's/  */ /g' "$PKG_BUILD_DIR/Makefile"
+		info_msg "Patched Makefile: removed -mfpu=neon for aarch64, kept -D_USE_NEON"
 	fi
 	# Add STAGING_DIR include path to CFLAGS line (for cutils/log.h from android-binder)
 	# Boost headers should be available via system or will be installed as dependency
@@ -164,7 +202,8 @@ EOF
 	fi
 	
 	# Build (Makefile now has all correct include paths and library paths)
-	make all || {
+	# Explicitly pass CC and CXX to make to ensure cross-compiler is used
+	make all CC="$CC" CXX="$CXX" || {
 		error_msg "Build failed"
 		return 1
 	}

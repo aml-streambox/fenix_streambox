@@ -101,67 +101,81 @@ EOF
 	fi
 	
 	# Copy protoc shared libraries (libprotoc.so.32, libprotobuf.so.32, etc.)
-	# protoc needs these at runtime
-	# These libraries are typically in libprotobuf32t64 package, not protobuf-compiler
-	# Try to extract from libprotobuf32t64 package if available
-	local PROTOBUF_LIB_PKG="$PKGS_DIR/protobuf-compiler/sources/libprotobuf32t64_*.deb"
-	local PROTOBUF_LIB_EXTRACT_DIR="$PKG_BUILD_DIR/temp_protobuf_lib"
+	# protoc binary needs these at runtime - it dynamically links to libprotoc.so.32
+	# Use libraries from the ported libprotobuf32t64 package (NO SYSTEM LIBRARIES!)
+	local PROTOBUF_LIB_STAGING_DIR="$BUILD/staging/libprotobuf32t64"
 	
-	# Check if we need to extract libprotobuf32t64 package
-	if [ ! -f "$TEMP_HOST_DIR/lib/libprotoc.so.32" ]; then
-		# Try to find and extract from deb package in sources
-		for deb_file in $PROTOBUF_LIB_PKG; do
-			if [ -f "$deb_file" ]; then
-				mkdir -p "$PROTOBUF_LIB_EXTRACT_DIR"
-				dpkg-deb -x "$deb_file" "$PROTOBUF_LIB_EXTRACT_DIR" 2>/dev/null || true
-				# Copy libraries
-				if [ -d "$PROTOBUF_LIB_EXTRACT_DIR/usr/lib/x86_64-linux-gnu" ]; then
-					find "$PROTOBUF_LIB_EXTRACT_DIR/usr/lib/x86_64-linux-gnu" \( -name "libprotoc.so*" -o -name "libprotobuf.so*" \) -type f 2>/dev/null | while read lib; do
-						cp "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || true
-					done
-				fi
-				if [ -d "$PROTOBUF_LIB_EXTRACT_DIR/usr/lib" ]; then
-					find "$PROTOBUF_LIB_EXTRACT_DIR/usr/lib" \( -name "libprotoc.so*" -o -name "libprotobuf.so*" \) -type f 2>/dev/null | while read lib; do
-						cp "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || true
-					done
-				fi
-				# Cleanup
-				find "$PROTOBUF_LIB_EXTRACT_DIR" -mindepth 1 -delete 2>/dev/null || true
-				rmdir "$PROTOBUF_LIB_EXTRACT_DIR" 2>/dev/null || true
-				if [ -f "$TEMP_HOST_DIR/lib/libprotoc.so.32" ]; then
-					info_msg "Extracted protobuf libraries from libprotobuf32t64 package"
-					break
-				fi
+	# Extract libprotobuf32t64 package if needed
+	if [ ! -d "$PROTOBUF_LIB_STAGING_DIR/usr/lib" ] && [ ! -d "$PROTOBUF_LIB_STAGING_DIR/usr/lib/x86_64-linux-gnu" ]; then
+		local PROTOBUF_LIB_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libprotobuf32t64" -name "*.deb" 2>/dev/null | head -1)
+		if [ -n "$PROTOBUF_LIB_DEB" ] && [ -f "$PROTOBUF_LIB_DEB" ]; then
+			info_msg "Found libprotobuf32t64 package, extracting to staging..."
+			mkdir -p "$PROTOBUF_LIB_STAGING_DIR"
+			if dpkg-deb -x "$PROTOBUF_LIB_DEB" "$PROTOBUF_LIB_STAGING_DIR" 2>/dev/null; then
+				info_msg "Successfully extracted libprotobuf32t64 to staging"
+			else
+				warning_msg "Failed to extract libprotobuf32t64 package"
+			fi
+		else
+			# Try from sources directly
+			if [ -d "$PKGS_DIR/libprotobuf32t64/sources/usr" ]; then
+				info_msg "Using libprotobuf32t64 from sources directly..."
+				mkdir -p "$PROTOBUF_LIB_STAGING_DIR"
+				cp -r "$PKGS_DIR/libprotobuf32t64/sources/usr"/* "$PROTOBUF_LIB_STAGING_DIR/usr/" 2>/dev/null || true
+			else
+				error_msg "libprotobuf32t64 package not found. Please build it first."
+				error_msg "Expected location: $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libprotobuf32t64/"
+				error_msg "Or sources at: $PKGS_DIR/libprotobuf32t64/sources/usr/"
+				return 1
+			fi
+		fi
+	fi
+	
+	# Copy libraries from libprotobuf32t64 package
+	if [ -d "$PROTOBUF_LIB_STAGING_DIR/usr/lib/x86_64-linux-gnu" ]; then
+		find "$PROTOBUF_LIB_STAGING_DIR/usr/lib/x86_64-linux-gnu" \( -name "libprotoc.so*" -o -name "libprotobuf.so*" \) 2>/dev/null | while read lib; do
+			if [ -e "$lib" ]; then
+				cp -L "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || cp "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || true
+			fi
+		done
+	fi
+	if [ -d "$PROTOBUF_LIB_STAGING_DIR/usr/lib" ]; then
+		find "$PROTOBUF_LIB_STAGING_DIR/usr/lib" \( -name "libprotoc.so*" -o -name "libprotobuf.so*" \) 2>/dev/null | while read lib; do
+			if [ -e "$lib" ]; then
+				cp -L "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || cp "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || true
 			fi
 		done
 	fi
 	
-	# Try from staged package directory (from protobuf-compiler package)
-	if [ -d "$PROTOBUF_STAGING_DIR/usr/lib" ]; then
-		find "$PROTOBUF_STAGING_DIR/usr/lib" \( -name "libprotoc.so*" -o -name "libprotobuf.so*" \) -type f 2>/dev/null | while read lib; do
-			cp "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || true
-		done
-	fi
-	# Also check x86_64-linux-gnu subdirectory
-	if [ -d "$PROTOBUF_STAGING_DIR/usr/lib/x86_64-linux-gnu" ]; then
-		find "$PROTOBUF_STAGING_DIR/usr/lib/x86_64-linux-gnu" \( -name "libprotoc.so*" -o -name "libprotobuf.so*" \) -type f 2>/dev/null | while read lib; do
-			cp "$lib" "$TEMP_HOST_DIR/lib/" 2>/dev/null || true
-		done
-	fi
-	
-	# Final check - if still not found, error (offline only, must be ported)
+	# Verify libraries were copied (MUST be from ported package, NOT system)
 	if [ ! -f "$TEMP_HOST_DIR/lib/libprotoc.so.32" ]; then
-		error_msg "libprotoc.so.32 not found in local sources"
-		error_msg "Please port libprotobuf32t64 as a local package (offline build):"
-		error_msg "  1. Download libprotobuf32t64_3.21.12-8.2ubuntu0.2_amd64.deb"
-		error_msg "  2. Place it in packages/protobuf-compiler/sources/"
-		error_msg "  3. Rebuild"
+		error_msg "libprotoc.so.32 not found from ported libprotobuf32t64 package"
+		error_msg "Please build libprotobuf32t64 package first:"
+		error_msg "  1. Extract libprotobuf32t64_3.21.12-8.2ubuntu0.2_amd64.deb"
+		error_msg "  2. Place contents in packages/libprotobuf32t64/sources/usr/"
+		error_msg "  3. Build libprotobuf32t64 package"
+		error_msg "  4. Rebuild aml-audio-service"
 		return 1
 	fi
 	
 	# Copy grpc plugins from libgrpc-dev
+	# Try from staging directory first
 	if [ -d "$GRPC_STAGING_DIR/usr/bin" ]; then
 		find "$GRPC_STAGING_DIR/usr/bin" -type f -name "*grpc*" -exec cp {} "$TEMP_HOST_DIR/bin/" \; 2>/dev/null || true
+		find "$TEMP_HOST_DIR/bin" -type f -exec chmod 755 {} \; 2>/dev/null || true
+	fi
+	# Also try from sources directly if not found
+	if [ ! -f "$TEMP_HOST_DIR/bin/grpc_cpp_plugin" ] && [ -d "$PKGS_DIR/libgrpc-dev/sources/usr/bin" ]; then
+		find "$PKGS_DIR/libgrpc-dev/sources/usr/bin" -type f -name "*grpc*" -exec cp {} "$TEMP_HOST_DIR/bin/" \; 2>/dev/null || true
+		find "$TEMP_HOST_DIR/bin" -type f -exec chmod 755 {} \; 2>/dev/null || true
+	fi
+	# Also check lib/x86_64-linux-gnu/bin (some packages put binaries there)
+	if [ ! -f "$TEMP_HOST_DIR/bin/grpc_cpp_plugin" ] && [ -d "$PKGS_DIR/libgrpc-dev/sources/usr/lib/x86_64-linux-gnu/bin" ]; then
+		find "$PKGS_DIR/libgrpc-dev/sources/usr/lib/x86_64-linux-gnu/bin" -type f -name "*grpc*" -exec cp {} "$TEMP_HOST_DIR/bin/" \; 2>/dev/null || true
+		find "$TEMP_HOST_DIR/bin" -type f -exec chmod 755 {} \; 2>/dev/null || true
+	fi
+	if [ ! -f "$TEMP_HOST_DIR/bin/grpc_cpp_plugin" ] && [ -d "$GRPC_STAGING_DIR/usr/lib/x86_64-linux-gnu/bin" ]; then
+		find "$GRPC_STAGING_DIR/usr/lib/x86_64-linux-gnu/bin" -type f -name "*grpc*" -exec cp {} "$TEMP_HOST_DIR/bin/" \; 2>/dev/null || true
 		find "$TEMP_HOST_DIR/bin" -type f -exec chmod 755 {} \; 2>/dev/null || true
 	fi
 	
@@ -186,8 +200,12 @@ EOF
 	fi
 	
 	if [ ! -f "$HOST_DIR/bin/grpc_cpp_plugin" ]; then
-		warning_msg "grpc_cpp_plugin not found at $HOST_DIR/bin/grpc_cpp_plugin"
-		warning_msg "gRPC code generation may fail."
+		error_msg "grpc_cpp_plugin not found at $HOST_DIR/bin/grpc_cpp_plugin"
+		error_msg "gRPC code generation requires grpc_cpp_plugin binary."
+		error_msg "The plugin is not included in libgrpc-dev package and must be obtained separately."
+		error_msg "Please download grpc_cpp_plugin binary and place it in packages/libgrpc-dev/sources/usr/bin/"
+		error_msg "Or extract it from a grpc source build and place it there."
+		return 1
 	fi
 	
 	info_msg "Using protoc and grpc tools from staged packages"
@@ -195,24 +213,10 @@ EOF
 	export HOST_DIR="$HOST_DIR"
 	
 	# Set LD_LIBRARY_PATH so protoc can find its shared libraries
-	# Include both our lib directory and system library paths as fallback
-	local LD_LIB_PATH=""
+	# ONLY use ported package libraries - NO SYSTEM LIBRARIES!
 	if [ -d "$TEMP_HOST_DIR/lib" ]; then
-		LD_LIB_PATH="$TEMP_HOST_DIR/lib"
-	fi
-	# Add system library paths as fallback (for amd64 host)
-	for sys_path in "/usr/lib/x86_64-linux-gnu" "/usr/lib" "/lib/x86_64-linux-gnu"; do
-		if [ -d "$sys_path" ]; then
-			if [ -n "$LD_LIB_PATH" ]; then
-				LD_LIB_PATH="$LD_LIB_PATH:$sys_path"
-			else
-				LD_LIB_PATH="$sys_path"
-			fi
-		fi
-	done
-	if [ -n "$LD_LIB_PATH" ]; then
-		export LD_LIBRARY_PATH="$LD_LIB_PATH:${LD_LIBRARY_PATH:-}"
-		info_msg "Set LD_LIBRARY_PATH=$LD_LIBRARY_PATH for protoc runtime libraries"
+		export LD_LIBRARY_PATH="$TEMP_HOST_DIR/lib:${LD_LIBRARY_PATH:-}"
+		info_msg "Set LD_LIBRARY_PATH=$LD_LIBRARY_PATH for protoc runtime libraries (ported packages only)"
 	fi
 	
 	# Create build directory for generated files
@@ -220,6 +224,26 @@ EOF
 	
 	# Get include paths for dependencies
 	local INCLUDES="-I./include -I. -I./src -I$AML_BUILD_DIR/src"
+	
+	# Add Boost headers (required for aml-audio-service)
+	local BOOST_STAGING_DIR="$BUILD/staging/libboost1.83-dev"
+	if [ ! -d "$BOOST_STAGING_DIR/usr/include" ]; then
+		local BOOST_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libboost1.83-dev" -name "*.deb" 2>/dev/null | head -1)
+		if [ -n "$BOOST_DEB" ] && [ -f "$BOOST_DEB" ]; then
+			info_msg "Found libboost1.83-dev package, extracting to staging..."
+			mkdir -p "$BOOST_STAGING_DIR"
+			if dpkg-deb -x "$BOOST_DEB" "$BOOST_STAGING_DIR" 2>/dev/null; then
+				info_msg "Successfully extracted libboost1.83-dev to staging"
+			fi
+		fi
+	fi
+	if [ -d "$BOOST_STAGING_DIR/usr/include" ]; then
+		INCLUDES="-I$BOOST_STAGING_DIR/usr/include $INCLUDES"
+	fi
+	# Also try from sources directly
+	if [ -d "$PKGS_DIR/libboost1.83-dev/sources/usr/include" ]; then
+		INCLUDES="-I$PKGS_DIR/libboost1.83-dev/sources/usr/include $INCLUDES"
+	fi
 	
 	# Add staging directories for dependencies
 	if [ -d "$PKGS_DIR/aml-audio-utils/sources/include" ]; then
@@ -229,14 +253,45 @@ EOF
 		INCLUDES="-I$PKGS_DIR/android-binder/sources/include $INCLUDES"
 	fi
 	
-	# Add gRPC and protobuf includes from rootfs or system
-	if [ -d "$ROOTFS_TEMP/usr/include" ]; then
-		INCLUDES="-I$ROOTFS_TEMP/usr/include $INCLUDES"
+	# Add gRPC headers (required for aml-audio-service)
+	# NEVER use rootfs - always use packages!
+	# Check for libgrpc++-dev package (provides grpcpp headers)
+	local GRPCXX_STAGING_DIR="$BUILD/staging/libgrpc++-dev"
+	if [ ! -d "$GRPCXX_STAGING_DIR/usr/include" ]; then
+		local GRPCXX_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libgrpc++-dev" -name "*.deb" 2>/dev/null | head -1)
+		if [ -n "$GRPCXX_DEB" ] && [ -f "$GRPCXX_DEB" ]; then
+			info_msg "Found libgrpc++-dev package, extracting to staging..."
+			mkdir -p "$GRPCXX_STAGING_DIR"
+			if dpkg-deb -x "$GRPCXX_DEB" "$GRPCXX_STAGING_DIR" 2>/dev/null; then
+				info_msg "Successfully extracted libgrpc++-dev to staging"
+			fi
+		fi
+	fi
+	if [ -d "$GRPCXX_STAGING_DIR/usr/include" ]; then
+		INCLUDES="-I$GRPCXX_STAGING_DIR/usr/include $INCLUDES"
+	fi
+	# Also check sources directly
+	if [ -d "$PKGS_DIR/libgrpc++-dev/sources/usr/include" ]; then
+		INCLUDES="-I$PKGS_DIR/libgrpc++-dev/sources/usr/include $INCLUDES"
+	fi
+	# Also check gRPC C headers from libgrpc-dev
+	if [ -d "$GRPC_STAGING_DIR/usr/include" ]; then
+		INCLUDES="-I$GRPC_STAGING_DIR/usr/include $INCLUDES"
+	fi
+	# Check sources directly (libgrpc-dev for C headers - grpcpp not included in libgrpc-dev)
+	if [ -d "$PKGS_DIR/libgrpc-dev/sources/usr/include" ]; then
+		INCLUDES="-I$PKGS_DIR/libgrpc-dev/sources/usr/include $INCLUDES"
 	fi
 	
 	# Update Makefile CFLAGS to include all dependency paths
 	# Add dependency include paths while preserving existing includes
-	sed -i "s|-I\$(AML_BUILD_DIR)/src -I\$(AML_BUILD_DIR)|-I\$(AML_BUILD_DIR)/src -I\$(AML_BUILD_DIR) $INCLUDES|" "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
+	# Check if Boost include is already there to avoid duplicates
+	local BOOST_INCLUDE_PATTERN="libboost1.83-dev"
+	if ! grep -q "$BOOST_INCLUDE_PATTERN" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+		# Append includes to the CFLAGS line
+		# Use sed to append at the end of the CFLAGS line
+		sed -i "/^CFLAGS +=/s|\$| $INCLUDES|" "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
+	fi
 	
 	# The Makefile uses HOST_DIR variable, which we've set above
 	# PROTOC=$(HOST_DIR)/bin/protoc and GRPC_CPP_PLUGIN_PATH=$(HOST_DIR)/bin/grpc_cpp_plugin
@@ -261,10 +316,7 @@ EOF
 		LIB_PATHS="-L$BINDER_BUILD $LIB_PATHS"
 	fi
 	
-	# Add rootfs library paths for Debian packages (grpc, protobuf, boost)
-	if [ -d "$ROOTFS_TEMP/usr/lib" ]; then
-		LIB_PATHS="-L$ROOTFS_TEMP/usr/lib $LIB_PATHS"
-	fi
+	# NEVER use rootfs - only use packages!
 	
 	# Update LDFLAGS to include library paths
 	if [ -n "$LIB_PATHS" ]; then
@@ -287,6 +339,13 @@ EOF
 		sed -i "s|\$(PROTOC)|env LD_LIBRARY_PATH=\"$LD_LIBRARY_PATH\" \$(PROTOC)|g" "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
 		info_msg "Patched Makefile to set LD_LIBRARY_PATH for protoc commands"
 	fi
+	
+	# Fix pattern rules - VPATH doesn't work reliably with implicit rules when using notdir
+	# The Makefile uses notdir which strips src/ prefix, then tries to find files via VPATH
+	# But VPATH doesn't work well with pattern rules, so we explicitly specify src/ in the rule
+	# Replace the pattern rules to look in src/ directory for source files
+	sed -i 's|^\$(AML_BUILD_DIR)/%.o: %.cpp|$(AML_BUILD_DIR)/%.o: src/%.cpp|' "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
+	sed -i 's|^\$(AML_BUILD_DIR)/%.o: %.c|$(AML_BUILD_DIR)/%.o: src/%.c|' "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
 	
 	make all || {
 		error_msg "Build failed"

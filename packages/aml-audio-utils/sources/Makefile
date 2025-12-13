@@ -17,7 +17,7 @@ ifeq ($(TOOLCHAIN_NEON_SUPPORT),y)
 TOOLCHAIN_NEON_FLAGS = -mfpu=neon -D_USE_NEON
 endif
 
-CFLAGS+=-fPIC -O2 -I./include -I./include/speex -I./include/IpcBuffer -I. -I./src -DNDEBUG -DFIXED_POINT -DRESAMPLE_FORCE_FULL_SINC_TABLE -DEXPORT=
+CFLAGS+=-fPIC -O2 -I./include -I./include/speex -I./include/IpcBuffer -I. -I./src $(TOOLCHAIN_NEON_FLAGS) -DNDEBUG -DFIXED_POINT -DRESAMPLE_FORCE_FULL_SINC_TABLE -DEXPORT=
 LDFLAGS+=-llog -ldl -lrt -lpthread -lstdc++
 
 CUTILS_OBJCTS = $(patsubst %.c, $(AML_BUILD_DIR)/%.o, $(notdir $(CUTILS_SRCS)))
