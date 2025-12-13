@@ -1,3 +1,62 @@
+# Helper function to set fixed cross-compiler path for ARM64 (VIM4 board only)
+detect_cross_compiler() {
+	# Fixed toolchain paths for ARM64 - try multiple compilers to find one that works
+	local TOOLCHAIN_OPTIONS=(
+		"$BUILD/gcc-linaro-aarch64-linux-gnu-7.3.1-2018.05:aarch64-linux-gnu"
+		"$BUILD/gcc-arm-aarch64-none-linux-gnu-12.2.rel1:aarch64-none-linux-gnu"
+		"$BUILD/gcc-arm-aarch64-none-linux-gnu-mainline-12.2.rel1:aarch64-none-linux-gnu"
+	)
+	
+	# Try each toolchain in order
+	CC=""
+	CXX=""
+	for toolchain_spec in "${TOOLCHAIN_OPTIONS[@]}"; do
+		local TOOLCHAIN_DIR="${toolchain_spec%%:*}"
+		local CROSS_COMPILE_PREFIX="${toolchain_spec##*:}"
+		
+		if [ -d "$TOOLCHAIN_DIR/bin" ] && [ -f "$TOOLCHAIN_DIR/bin/${CROSS_COMPILE_PREFIX}-gcc" ]; then
+			CC="$TOOLCHAIN_DIR/bin/${CROSS_COMPILE_PREFIX}-gcc"
+			CXX="$TOOLCHAIN_DIR/bin/${CROSS_COMPILE_PREFIX}-g++"
+			CROSS_COMPILE="${CROSS_COMPILE_PREFIX}-"
+			info_msg "Using toolchain: $TOOLCHAIN_DIR"
+			break
+		fi
+	done
+	
+	if [ -z "$CC" ]; then
+		error_msg "Cross-compiler not found in fixed paths"
+		error_msg ""
+		error_msg "Tried toolchain locations:"
+		for toolchain_spec in "${TOOLCHAIN_OPTIONS[@]}"; do
+			local TOOLCHAIN_DIR="${toolchain_spec%%:*}"
+			local CROSS_COMPILE_PREFIX="${toolchain_spec##*:}"
+			error_msg "  - $TOOLCHAIN_DIR/bin/${CROSS_COMPILE_PREFIX}-gcc"
+		done
+		error_msg ""
+		error_msg "Please ensure at least one toolchain is extracted to the build directory"
+		return 1
+	fi
+	
+	# Verify cross-compiler exists
+	if [ ! -f "$CC" ] || [ ! -x "$CC" ]; then
+		error_msg "Cross-compiler not executable: $CC"
+		return 1
+	fi
+	
+	if [ ! -f "$CXX" ] || [ ! -x "$CXX" ]; then
+		error_msg "Cross-compiler C++ not executable: $CXX"
+		return 1
+	fi
+	
+	# Get absolute paths
+	CC=$(readlink -f "$CC" 2>/dev/null || echo "$CC")
+	CXX=$(readlink -f "$CXX" 2>/dev/null || echo "$CXX")
+	
+	export CC CXX CROSS_COMPILE
+	info_msg "Using cross-compiler: CC=$CC, CXX=$CXX"
+	return 0
+}
+
 PKG_NAME="aml-audio-utils"
 PKG_VERSION="amlogic-yocto-1.0"
 PKG_SHA256=""
@@ -6,7 +65,7 @@ PKG_SITE=""
 PKG_URL=""
 PKG_ARCH="arm aarch64"
 PKG_LICENSE="AMLOGIC"
-PKG_SHORTDESC="Amlogic Audio Utilities Library"
+PKG_SHORTDESC="Amlogic Audio Utils Library"
 
 PKG_NEED_BUILD="YES"
 
@@ -14,9 +73,6 @@ make_target() {
 	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
 	# Overwrite by recreating directory structure
 	mkdir -p $pkgdir/DEBIAN
-	mkdir -p $pkgdir/usr/lib
-	mkdir -p $pkgdir/usr/include/audio_utils
-	mkdir -p $pkgdir/usr/include/IpcBuffer
 
 	# Set up control file
 	cat <<-EOF > $pkgdir/DEBIAN/control
@@ -24,11 +80,10 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
-Depends: android-binder, android-liblog, libboost-system1.83.0
-Build-Depends: libboost1.83-dev
+Depends: android-binder, libboost-system1.83.0, android-liblog
 Section: libs
 Priority: optional
-Description: Amlogic Audio Utilities Library
+Description: Amlogic Audio Utils Library
  ${PKG_SHORTDESC}
  Provides libamaudioutils.so, libcutils.so, and IPC Buffer headers.
 EOF
@@ -42,41 +97,18 @@ EOF
 		return 1
 	fi
 
+	# Detect and verify cross-compiler (do NOT rely on CROSS_COMPILE env var)
+	detect_cross_compiler || return 1
+
 	# Set build environment variables as expected by the Makefile
 	export AML_BUILD_DIR="$PKG_BUILD_DIR"
 	export STAGING_DIR="$PKG_BUILD_DIR/staging"
 	export TARGET_DIR="$pkgdir"
 	export STRIP="${CROSS_COMPILE}strip"
 	
-	# Set cross-compiler environment variables for Makefile
-	# CROSS_COMPILE is set by Fenix build system (e.g., "aarch64-linux-gnu-")
-	export CC="${CROSS_COMPILE}gcc"
-	export CXX="${CROSS_COMPILE}g++"
-	
-	# Verify cross-compiler exists
-	if ! command -v "$CC" >/dev/null 2>&1; then
-		# Try to detect based on DISTRIB_ARCH if CROSS_COMPILE not set
-		if [ -z "$CROSS_COMPILE" ]; then
-			if [ "$DISTRIB_ARCH" = "aarch64" ]; then
-				CROSS_COMPILE="aarch64-linux-gnu-"
-			elif [ "$DISTRIB_ARCH" = "armhf" ] || [ "$DISTRIB_ARCH" = "arm" ]; then
-				CROSS_COMPILE="arm-linux-gnueabihf-"
-			fi
-			export CC="${CROSS_COMPILE}gcc"
-			export CXX="${CROSS_COMPILE}g++"
-		fi
-		
-		if ! command -v "$CC" >/dev/null 2>&1; then
-			error_msg "Cross-compiler not found: $CC"
-			error_msg "CROSS_COMPILE is: '${CROSS_COMPILE}'"
-			error_msg "Please ensure cross-compiler is installed: sudo apt-get install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu"
-			return 1
-		fi
-	fi
-	info_msg "Using cross-compiler: CC=$CC, CXX=$CXX"
-	
-	# Keep NEON support enabled (NEON is available on aarch64, flags will be handled by Makefile)
-	export TOOLCHAIN_NEON_SUPPORT=y
+	# Disable NEON support (code has ARM32 inline assembly incompatible with aarch64)
+	# The compiler will still auto-vectorize with aarch64 NEON/SIMD automatically
+	export TOOLCHAIN_NEON_SUPPORT=n
 
 	# Create staging directory
 	mkdir -p "$STAGING_DIR/usr/lib"
@@ -94,9 +126,48 @@ EOF
 
 	# Build libamaudioutils.so and libcutils.so
 	info_msg "Building ${PKG_NAME}..."
-	# Pass CC and CXX explicitly to make to ensure cross-compiler is used
-	# Note: Makefile uses CC for both C and C++ files, so we set both
-	make clean CC="$CC" CXX="$CXX" 2>/dev/null || true
+	make clean 2>/dev/null || true
+	
+	# Patch Makefile AFTER clean to set CC/CXX and fix NEON flags
+	# (Makefile might be restored from sources, so patch after clean)
+	# Set CC and CXX in Makefile to use cross-compiler (override any defaults)
+	# Escape special characters in CC/CXX for sed
+	local CC_ESC=$(echo "$CC" | sed 's/[[\.*^$()+?{|]/\\&/g')
+	local CXX_ESC=$(echo "$CXX" | sed 's/[[\.*^$()+?{|]/\\&/g')
+	
+	# Check if CC is already defined in Makefile
+	if ! grep -q "^CC[[:space:]]*:=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null && ! grep -q "^CC[[:space:]]*=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+		# Add CC and CXX at the beginning of Makefile (before any includes or conditionals)
+		sed -i "1i CC := ${CC_ESC}\nCXX := ${CXX_ESC}" "$PKG_BUILD_DIR/Makefile"
+		info_msg "Set CC=${CC} and CXX=${CXX} in Makefile"
+	else
+		# Update or add CC/CXX definitions - place at top of file
+		if grep -q "^CC[[:space:]]*:=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+			sed -i "s|^CC[[:space:]]*:=.*|CC := ${CC_ESC}|" "$PKG_BUILD_DIR/Makefile"
+		else
+			sed -i "1i CC := ${CC_ESC}" "$PKG_BUILD_DIR/Makefile"
+		fi
+		if grep -q "^CXX[[:space:]]*:=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+			sed -i "s|^CXX[[:space:]]*:=.*|CXX := ${CXX_ESC}|" "$PKG_BUILD_DIR/Makefile"
+		else
+			sed -i "1i CXX := ${CXX_ESC}" "$PKG_BUILD_DIR/Makefile"
+		fi
+		info_msg "Updated CC=${CC} and CXX=${CXX} in Makefile"
+	fi
+	
+	# Patch Makefile to use CXX for .cpp files (Makefile incorrectly uses CC for C++ files)
+	sed -i 's/^\t\$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $</\t$(CXX) -c $(CFLAGS) $(CXXFLAGS) -o $@ $</' "$PKG_BUILD_DIR/Makefile"
+	
+	# No need to patch Makefile - TOOLCHAIN_NEON_SUPPORT=n prevents TOOLCHAIN_NEON_FLAGS from being set
+	# This means $(TOOLCHAIN_NEON_FLAGS) in CFLAGS will be empty, avoiding ARM32 inline assembly
+	
+	# Add missing string.h include to resampler.c to fix memcpy/memmove warnings
+	if [ -f "$PKG_BUILD_DIR/src/resampler.c" ] && ! grep -q "#include <string.h>" "$PKG_BUILD_DIR/src/resampler.c" 2>/dev/null; then
+		# Add after the last #include (typically after speex_resampler.h)
+		sed -i '/^#include <speex\/speex_resampler\.h>/a#include <string.h>' "$PKG_BUILD_DIR/src/resampler.c" 2>/dev/null || \
+		# Fallback: add after first #include line
+		sed -i '/^#include/a#include <string.h>' "$PKG_BUILD_DIR/src/resampler.c" 2>/dev/null || true
+	fi
 	
 	# Re-create staging directory after clean (clean removes it) and copy android-binder headers
 	mkdir -p "$STAGING_DIR/usr/include/cutils"
@@ -110,34 +181,14 @@ EOF
 			sed -i 's/^extern pid_t gettid();$/\/\/ extern pid_t gettid(); \/\/ System provides in glibc 2.30+/' "$STAGING_DIR/usr/include/cutils/threads.h" 2>/dev/null || true
 		fi
 	fi
-	
-	# Patch Makefile to use CXX for .cpp files (Makefile incorrectly uses CC for C++ files)
-	# The Makefile uses $(CC) for both .c and .cpp files, but should use $(CXX) for .cpp
-	if ! grep -q 'CXX \?=' "$PKG_BUILD_DIR/Makefile"; then
-		# Add CXX variable if not defined
-		sed -i '1i CXX ?= $(CC)' "$PKG_BUILD_DIR/Makefile"
-	fi
-	# Patch .cpp rule to use $(CXX) instead of $(CC)
-	sed -i 's/^\t\$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $</\t$(CXX) -c $(CFLAGS) $(CXXFLAGS) -o $@ $</' "$PKG_BUILD_DIR/Makefile"
-	
-	# Keep NEON support enabled - Makefile will add -mfpu=neon -D_USE_NEON via TOOLCHAIN_NEON_SUPPORT=y
-	# For aarch64, -mfpu=neon is not valid (NEON is always available), but -D_USE_NEON is fine
-	# Patch Makefile to remove only -mfpu=neon for aarch64, keep -D_USE_NEON
-	if [ "$DISTRIB_ARCH" = "aarch64" ]; then
-		# Replace -mfpu=neon -D_USE_NEON with just -D_USE_NEON (keep NEON define, remove invalid flag)
-		sed -i 's/-mfpu=neon -D_USE_NEON/-D_USE_NEON/g' "$PKG_BUILD_DIR/Makefile"
-		sed -i 's/-mfpu=neon//g' "$PKG_BUILD_DIR/Makefile"
-		sed -i 's/  */ /g' "$PKG_BUILD_DIR/Makefile"
-		info_msg "Patched Makefile: removed -mfpu=neon for aarch64, kept -D_USE_NEON"
-	fi
 	# Add STAGING_DIR include path to CFLAGS line (for cutils/log.h from android-binder)
 	# Boost headers should be available via system or will be installed as dependency
 	sed -i "s|CFLAGS+=|CFLAGS+=-I${STAGING_DIR}/usr/include |" "$PKG_BUILD_DIR/Makefile"
 	
 	# Get boost headers from libboost1.83-dev package
 	# Check if the package was built and extract it to staging
-	local BOOST_INCLUDE=""
 	local BOOST_STAGING_DIR="$BUILD/staging/libboost1.83-dev"
+	mkdir -p "$BOOST_STAGING_DIR"
 	
 	# First check if already extracted
 	if [ ! -d "$BOOST_STAGING_DIR/usr/include/boost" ]; then
@@ -158,16 +209,11 @@ EOF
 		fi
 	fi
 	
-	# Use boost headers from staging
+	# Add Boost include path to CFLAGS if found
 	if [ -d "$BOOST_STAGING_DIR/usr/include/boost" ]; then
-		BOOST_INCLUDE="-I$BOOST_STAGING_DIR/usr/include"
+		local BOOST_INCLUDE="-I$BOOST_STAGING_DIR/usr/include"
 		info_msg "Using boost headers from staged libboost1.83-dev package"
-	else
-		error_msg "Boost headers not found in staged package: $BOOST_STAGING_DIR/usr/include/boost"
-		return 1
-	fi
-	
-	if [ -n "$BOOST_INCLUDE" ]; then
+		# Update CFLAGS line to include Boost headers
 		sed -i "s|CFLAGS+=-I${STAGING_DIR}/usr/include |CFLAGS+=-I${STAGING_DIR}/usr/include $BOOST_INCLUDE |" "$PKG_BUILD_DIR/Makefile"
 	fi
 	
@@ -201,42 +247,43 @@ EOF
 		sed -i "s|LDFLAGS+=-llog|LDFLAGS+=$LIB_PATHS -llog|" "$PKG_BUILD_DIR/Makefile"
 	fi
 	
-	# Build (Makefile now has all correct include paths and library paths)
-	# Explicitly pass CC and CXX to make to ensure cross-compiler is used
-	make all CC="$CC" CXX="$CXX" || {
+	# Build (Makefile now has CC/CXX set and all correct include paths and library paths)
+	# Also pass CC/CXX on command line as backup (Make will use command line over Makefile)
+	info_msg "Running make with CC=${CC} CXX=${CXX}"
+	make all CC="${CC}" CXX="${CXX}" || {
 		error_msg "Build failed"
 		return 1
 	}
 
 	# Install libraries
-	if [ -f "$AML_BUILD_DIR/libamaudioutils.so" ]; then
-		install -m 644 "$AML_BUILD_DIR/libamaudioutils.so" "${pkgdir}/usr/lib/"
+	if [ -f "$PKG_BUILD_DIR/libamaudioutils.so" ]; then
+		install -m 644 "$PKG_BUILD_DIR/libamaudioutils.so" "${pkgdir}/usr/lib/"
 		${STRIP} "${pkgdir}/usr/lib/libamaudioutils.so" 2>/dev/null || true
 	else
 		error_msg "libamaudioutils.so not found after build"
 		return 1
 	fi
 
-	if [ -f "$AML_BUILD_DIR/libcutils.so" ]; then
-		install -m 644 "$AML_BUILD_DIR/libcutils.so" "${pkgdir}/usr/lib/"
+	if [ -f "$PKG_BUILD_DIR/libcutils.so" ]; then
+		install -m 644 "$PKG_BUILD_DIR/libcutils.so" "${pkgdir}/usr/lib/"
 		${STRIP} "${pkgdir}/usr/lib/libcutils.so" 2>/dev/null || true
-	else
-		error_msg "libcutils.so not found after build"
-		return 1
 	fi
 
 	# Install headers
 	if [ -d "$PKG_BUILD_DIR/include/audio_utils" ]; then
-		install -m 644 "$PKG_BUILD_DIR/include/audio_utils"/* "${pkgdir}/usr/include/audio_utils/" 2>/dev/null || true
+		mkdir -p "${pkgdir}/usr/include/audio_utils"
+		cp -r "$PKG_BUILD_DIR/include/audio_utils"/* "${pkgdir}/usr/include/audio_utils/" 2>/dev/null || true
 	fi
+
 	if [ -d "$PKG_BUILD_DIR/include/IpcBuffer" ]; then
-		install -m 644 "$PKG_BUILD_DIR/include/IpcBuffer"/* "${pkgdir}/usr/include/IpcBuffer/" 2>/dev/null || true
+		mkdir -p "${pkgdir}/usr/include/IpcBuffer"
+		cp -r "$PKG_BUILD_DIR/include/IpcBuffer"/* "${pkgdir}/usr/include/IpcBuffer/" 2>/dev/null || true
 	fi
 
-	info_msg "Building Debian package: $PKG_NAME"
+	info_msg "Building Debian package: ${PKG_NAME}"
 	fakeroot dpkg-deb -b -Zxz $pkgdir ${pkgdir}.deb
-
-	# Overwrite package directory contents instead of removing (next build will recreate it)
+	
+	# Overwrite package directory contents instead of removing
 	find $pkgdir -mindepth 1 -delete 2>/dev/null || true
 }
 
@@ -250,4 +297,3 @@ makeinstall_target() {
 	# Overwrite deb file instead of removing
 	: > ${pkgdir}.deb 2>/dev/null || true
 }
-
