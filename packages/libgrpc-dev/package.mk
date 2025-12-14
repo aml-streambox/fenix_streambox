@@ -10,15 +10,15 @@ PKG_SHORTDESC="gRPC development libraries and plugins"
 
 PKG_NEED_BUILD="YES"
 
-make_target() {
-	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
-	# Overwrite by recreating directory structure
-	mkdir -p $pkgdir/DEBIAN
+	make_target() {
+		local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${PKG_VERSION}_${DISTRIB_ARCH}"
+		# Overwrite by recreating directory structure
+		mkdir -p $pkgdir/DEBIAN
 
-	# Set up control file
-	cat <<-EOF > $pkgdir/DEBIAN/control
+		# Set up control file
+		cat <<-EOF > $pkgdir/DEBIAN/control
 Package: ${PKG_NAME}
-Version: ${VERSION}
+Version: ${PKG_VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
 Depends: libgrpc29t64 (= 1.51.1-4.1build5), libgrpc++1.51t64 (= 1.51.1-4.1build5)
@@ -79,8 +79,8 @@ EOF
 	find $pkgdir -mindepth 1 -delete 2>/dev/null || true
 }
 
-makeinstall_target() {
-	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
+	makeinstall_target() {
+		local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${PKG_VERSION}_${DISTRIB_ARCH}"
 	mkdir -p $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/
 	# Overwrite old debs by deleting contents
 	find $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/ -mindepth 1 -delete 2>/dev/null || true

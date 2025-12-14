@@ -113,10 +113,25 @@ EOF
 	# The Makefile includes from STAGING_DIR/usr/include, so we need to set up kernel headers
 	# or ensure system headers are accessible via -I flags (Makefile handles this)
 
+	# Patch Makefile to use cross-compiler
+	# The Makefile uses $(CC) and $(CXX) variables, so we need to ensure they're set
+	if ! grep -q "^CC[[:space:]]*:=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+		local CC_ESC=$(echo "$CC" | sed 's/[[\.*^$()+?{|]/\\&/g')
+		local CXX_ESC=$(echo "$CXX" | sed 's/[[\.*^$()+?{|]/\\&/g')
+		sed -i "1i CC := ${CC_ESC}\nCXX := ${CXX_ESC}" "$PKG_BUILD_DIR/Makefile"
+		info_msg "Added CC=${CC} and CXX=${CXX} to Makefile"
+	else
+		local CC_ESC=$(echo "$CC" | sed 's/[[\.*^$()+?{|]/\\&/g')
+		local CXX_ESC=$(echo "$CXX" | sed 's/[[\.*^$()+?{|]/\\&/g')
+		sed -i "s|^CC[[:space:]]*:=.*|CC := ${CC_ESC}|" "$PKG_BUILD_DIR/Makefile"
+		sed -i "s|^CXX[[:space:]]*:=.*|CXX := ${CXX_ESC}|" "$PKG_BUILD_DIR/Makefile"
+		info_msg "Updated CC=${CC} and CXX=${CXX} in Makefile"
+	fi
+	
 	# Build libbinder.so and servicemanager
-	info_msg "Building ${PKG_NAME}..."
+	info_msg "Building ${PKG_NAME} with CC=${CC} CXX=${CXX}..."
 	make clean 2>/dev/null || true
-	make all || {
+	make all CC="${CC}" CXX="${CXX}" || {
 		error_msg "Build failed"
 		return 1
 	}

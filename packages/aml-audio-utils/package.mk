@@ -69,10 +69,12 @@ PKG_SHORTDESC="Amlogic Audio Utils Library"
 
 PKG_NEED_BUILD="YES"
 
-make_target() {
-	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
-	# Overwrite by recreating directory structure
-	mkdir -p $pkgdir/DEBIAN
+	make_target() {
+		local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
+		# Overwrite by recreating directory structure
+		mkdir -p $pkgdir/DEBIAN
+		mkdir -p $pkgdir/usr/lib
+		mkdir -p $pkgdir/usr/include
 
 	# Set up control file
 	cat <<-EOF > $pkgdir/DEBIAN/control
@@ -105,6 +107,10 @@ EOF
 	export STAGING_DIR="$PKG_BUILD_DIR/staging"
 	export TARGET_DIR="$pkgdir"
 	export STRIP="${CROSS_COMPILE}strip"
+	
+	# Create target directory structure (Makefile install target needs these directories)
+	mkdir -p "$pkgdir/usr/lib"
+	mkdir -p "$pkgdir/usr/include"
 	
 	# Disable NEON support (code has ARM32 inline assembly incompatible with aarch64)
 	# The compiler will still auto-vectorize with aarch64 NEON/SIMD automatically

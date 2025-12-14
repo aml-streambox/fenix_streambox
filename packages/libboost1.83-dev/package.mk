@@ -21,13 +21,14 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
-Depends: libboost1.83.0 (= 1.83.0-2.1ubuntu3.1)
+Depends: 
 Section: libdevel
 Priority: optional
 Description: Boost C++ Libraries development files
  ${PKG_SHORTDESC}
  This package provides headers for all Boost libraries.
- Note: Headers are architecture-independent, so we use amd64 package.
+ Note: Headers are architecture-independent. Runtime libraries (libboost1.83.0, libboost-system1.83.0, etc.)
+ are installed separately as needed by dependent packages (e.g., aml-audio-utils needs libboost-system1.83.0).
 EOF
 
 	# Copy from local sources directory
