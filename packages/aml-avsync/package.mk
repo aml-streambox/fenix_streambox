@@ -69,3 +69,124 @@ PKG_ARCH="aarch64"
 PKG_LICENSE="AMLOGIC"
 PKG_SHORTDESC="Amlogic Audio/Video synchronization library"
 
+PKG_NEED_BUILD="YES"
+
+make_target() {
+	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
+	rm -rf $pkgdir
+	mkdir -p $pkgdir/DEBIAN
+	mkdir -p $pkgdir/usr/lib
+	mkdir -p $pkgdir/usr/include
+
+	# Set up control file
+	cat <<-EOF > $pkgdir/DEBIAN/control
+Package: ${PKG_NAME}
+Version: ${VERSION}
+Architecture: ${DISTRIB_ARCH}
+Maintainer: Khadas <hello@khadas.com>
+Depends: 
+Section: libs
+Priority: optional
+Description: Amlogic AV Sync Library
+ ${PKG_SHORTDESC}
+ Provides libamlavsync.so for audio/video synchronization.
+EOF
+
+	# Build the package using the Makefile in the source
+	local PKG_BUILD_DIR="${BUILD}/${PKG_NAME}-${PKG_VERSION}"
+	cd "$PKG_BUILD_DIR"
+	if [ ! -f "src/Makefile" ]; then
+		error_msg "Makefile not found in $PKG_BUILD_DIR/src/"
+		ls -la "$PKG_BUILD_DIR" || true
+		return 1
+	fi
+
+	# Detect and verify cross-compiler (fixed paths for ARM64)
+	detect_cross_compiler || return 1
+
+	# Set build environment variables as expected by the Makefile
+	# According to Yocto recipe: OUT_DIR="${B}/src"
+	local OUT_DIR="$PKG_BUILD_DIR/src"
+	export OUT_DIR
+	export STAGING_DIR="$PKG_BUILD_DIR/staging"
+	export TARGET_DIR="$pkgdir"
+	export STRIP="${CROSS_COMPILE}strip"
+	export TARGET_CFLAGS="-fPIC -O2"
+
+	# Create staging directory
+	mkdir -p "$STAGING_DIR/usr/lib"
+	mkdir -p "$STAGING_DIR/usr/include"
+
+	# Pre-build step: Run version_config.sh to generate version header
+	# According to Yocto recipe: bash version_config.sh ${OUT_DIR}
+	cd "$PKG_BUILD_DIR"
+	if [ -f "version_config.sh" ]; then
+		info_msg "Running version_config.sh to generate version header..."
+		bash version_config.sh "$OUT_DIR" || {
+			error_msg "version_config.sh failed"
+			return 1
+		}
+	else
+		error_msg "version_config.sh not found in $PKG_BUILD_DIR"
+		return 1
+	fi
+
+	# Build from src/ directory (as per Yocto recipe)
+	cd "$PKG_BUILD_DIR/src"
+	
+	# Patch Makefile to use cross-compiler
+	# The Makefile uses $(CC) variable, so we need to ensure it's set
+	if ! grep -q "^CC[[:space:]]*:=" "$PKG_BUILD_DIR/src/Makefile" 2>/dev/null; then
+		local CC_ESC=$(echo "$CC" | sed 's/[[\.*^$()+?{|]/\\&/g')
+		sed -i "1i CC := ${CC_ESC}" "$PKG_BUILD_DIR/src/Makefile"
+		info_msg "Added CC=${CC} to Makefile"
+	else
+		local CC_ESC=$(echo "$CC" | sed 's/[[\.*^$()+?{|]/\\&/g')
+		sed -i "s|^CC[[:space:]]*:=.*|CC := ${CC_ESC}|" "$PKG_BUILD_DIR/src/Makefile"
+		info_msg "Updated CC=${CC} in Makefile"
+	fi
+
+	# Build libamlavsync.so
+	info_msg "Building ${PKG_NAME} with CC=${CC}..."
+	make clean 2>/dev/null || true
+	make all CC="${CC}" || {
+		error_msg "Build failed"
+		return 1
+	}
+
+	# Verify build output
+	if [ ! -f "$OUT_DIR/libamlavsync.so" ]; then
+		error_msg "libamlavsync.so not found after build"
+		return 1
+	fi
+
+	# Install library
+	install -m 644 "$OUT_DIR/libamlavsync.so" "${pkgdir}/usr/lib/"
+	${STRIP} "${pkgdir}/usr/lib/libamlavsync.so" 2>/dev/null || true
+
+	# Install headers
+	if [ -f "$PKG_BUILD_DIR/src/aml_avsync.h" ]; then
+		install -m 644 "$PKG_BUILD_DIR/src/aml_avsync.h" "${pkgdir}/usr/include/"
+	fi
+	if [ -f "$PKG_BUILD_DIR/src/aml_avsync_log.h" ]; then
+		install -m 644 "$PKG_BUILD_DIR/src/aml_avsync_log.h" "${pkgdir}/usr/include/"
+	fi
+
+	info_msg "Building Debian package: $PKG_NAME"
+	fakeroot dpkg-deb -b -Zxz $pkgdir ${pkgdir}.deb
+
+	# Cleanup
+	rm -rf $pkgdir
+}
+
+makeinstall_target() {
+	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
+	mkdir -p $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/
+	# Remove old debs
+	rm -rf $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/*
+	cp ${pkgdir}.deb $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/ 2>/dev/null || true
+
+	# Cleanup
+	rm -f ${pkgdir}.deb
+}
+

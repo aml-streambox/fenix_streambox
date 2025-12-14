@@ -38,6 +38,19 @@ uboot-clean: _env_is_setup
 debs: uboot kernel
 	@./scripts/build.sh debs
 
+# Quick build individual package (no u-boot/kernel build, no clean)
+# Usage: make pkg PKG=<package-name>
+# Example: make pkg PKG=android-binder
+#          make pkg PKG=aml-tvserver-streambox
+pkg: _env_is_setup
+	@if [ -z "$(PKG)" ]; then \
+		echo "Error: PKG variable is required"; \
+		echo "Usage: make pkg PKG=<package-name>"; \
+		echo "Example: make pkg PKG=android-binder"; \
+		exit 1; \
+	fi
+	@./quick-build-pkg.sh $(PKG)
+
 uboot-deb: uboot kernel-dtbs
 	@./scripts/build.sh uboot-deb
 
@@ -98,6 +111,8 @@ help:
 	@echo "  common-deb            - Build common debian package."
 	@echo "  desktop-deb           - Build desktop debian package."
 	@echo "  debs                  - Build all debian packages."
+	@echo "  pkg PKG=<name>        - Build individual package quickly (no u-boot/kernel)."
+	@echo "                          Example: make pkg PKG=android-binder"
 	@echo "  image                 - Pack update image."
 	@echo "  clean                 - Cleanup."
 	@echo "  clean-all             - Cleanup all."
