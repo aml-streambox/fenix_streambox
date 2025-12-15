@@ -1,0 +1,22 @@
+Description: libexpat.so.X.Y.Z is installed in /lib/${DEB_HOST_MULTIARCH}
+ instead of /usr/lib/${DEB_HOST_MULTIARCH}, thus the path of the shared library
+ is not relative to the location of this cmake file (Closes: #995907)
+Author: Andrius Merkys <merkys@debian.org>
+Forwarded: not-needed
+--- a/expat/cmake/autotools/expat-noconfig__linux.cmake.in
++++ b/expat/cmake/autotools/expat-noconfig__linux.cmake.in
+@@ -8,12 +8,12 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
+ # Import target "expat::expat" for configuration "NoConfig"
+ set_property(TARGET expat::expat APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+ set_target_properties(expat::expat PROPERTIES
+-  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/@LIBDIR_BASENAME@/libexpat.so.@SO_MAJOR@.@SO_MINOR@.@SO_PATCH@"
++  IMPORTED_LOCATION_NOCONFIG "/lib/@LIBDIR_BASENAME@/libexpat.so.@SO_MAJOR@.@SO_MINOR@.@SO_PATCH@"
+   IMPORTED_SONAME_NOCONFIG "libexpat.so.@SO_MAJOR@"
+   )
+ 
+ list(APPEND _cmake_import_check_targets expat::expat )
+-list(APPEND _cmake_import_check_files_for_expat::expat "${_IMPORT_PREFIX}/@LIBDIR_BASENAME@/libexpat.so.@SO_MAJOR@.@SO_MINOR@.@SO_PATCH@" )
++list(APPEND _cmake_import_check_files_for_expat::expat "/lib/@LIBDIR_BASENAME@/libexpat.so.@SO_MAJOR@.@SO_MINOR@.@SO_PATCH@" )
+ 
+ # Commands beyond this point should not need to know the version.
+ set(CMAKE_IMPORT_FILE_VERSION)

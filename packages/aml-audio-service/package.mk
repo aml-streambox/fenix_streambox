@@ -1,10 +1,11 @@
 # Helper function to set fixed cross-compiler path for ARM64 (VIM4 board only)
 detect_cross_compiler() {
 	# Fixed toolchain paths for ARM64 - try multiple compilers to find one that works
+	# Prioritize newer GCC 12.2 for better C++17 support
 	local TOOLCHAIN_OPTIONS=(
-		"$BUILD/gcc-linaro-aarch64-linux-gnu-7.3.1-2018.05:aarch64-linux-gnu"
-		"$BUILD/gcc-arm-aarch64-none-linux-gnu-12.2.rel1:aarch64-none-linux-gnu"
 		"$BUILD/gcc-arm-aarch64-none-linux-gnu-mainline-12.2.rel1:aarch64-none-linux-gnu"
+		"$BUILD/gcc-arm-aarch64-none-linux-gnu-12.2.rel1:aarch64-none-linux-gnu"
+		"$BUILD/gcc-linaro-aarch64-linux-gnu-7.3.1-2018.05:aarch64-linux-gnu"
 	)
 	
 	# Try each toolchain in order
@@ -166,6 +167,19 @@ EOF
 	if [ -d "$UTILS_SRC" ]; then
 		cp -r "$UTILS_SRC"/* "$STAGING_DIR/usr/include/utils/" 2>/dev/null || true
 		info_msg "Copied utils headers from android-binder sources"
+	fi
+	
+	# Copy Virtualx_v4.h from aml-audio-hal (needed for effect_tool.c)
+	local VIRTUALX_SRC="$PKGS_DIR/aml-audio-hal/sources/include/Virtualx_v4.h"
+	if [ -f "$VIRTUALX_SRC" ]; then
+		cp "$VIRTUALX_SRC" "$STAGING_DIR/usr/include/" 2>/dev/null || true
+		info_msg "Copied Virtualx_v4.h from aml-audio-hal sources"
+	fi
+	# Also check build directory
+	local VIRTUALX_BUILD="$BUILD/aml-audio-hal-${PKG_VERSION}/include/Virtualx_v4.h"
+	if [ ! -f "$STAGING_DIR/usr/include/Virtualx_v4.h" ] && [ -f "$VIRTUALX_BUILD" ]; then
+		cp "$VIRTUALX_BUILD" "$STAGING_DIR/usr/include/" 2>/dev/null || true
+		info_msg "Copied Virtualx_v4.h from aml-audio-hal build directory"
 	fi
 	
 	# Set up HOST_DIR for protoc and grpc_cpp_plugin
@@ -358,15 +372,39 @@ EOF
 	fi
 	
 	# Get android-liblog libraries
+	# Prefer build directory over package to avoid glibc version mismatches
 	local LIBLOG_BUILD="$BUILD/android-liblog-${PKG_VERSION}"
 	if [ ! -d "$LIBLOG_BUILD" ]; then
 		LIBLOG_BUILD="$BUILD/android-liblog-amlogic-yocto-1.0"
 	fi
 	local LIBLOG_LIB=""
-	if [ -d "$LIBLOG_BUILD/lib" ]; then
+	# Prefer build directory (built with same toolchain) over package
+	if [ -d "$LIBLOG_BUILD/lib" ] && [ -f "$LIBLOG_BUILD/lib/liblog.so" ]; then
 		LIBLOG_LIB="-L$LIBLOG_BUILD/lib"
+		# Copy to staging for linking
+		cp "$LIBLOG_BUILD/lib/liblog.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+		info_msg "Using liblog.so from build directory (same toolchain)"
 	elif [ -f "$LIBLOG_BUILD/liblog.so" ]; then
 		LIBLOG_LIB="-L$LIBLOG_BUILD"
+		# Copy to staging for linking
+		cp "$LIBLOG_BUILD/liblog.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+		info_msg "Using liblog.so from build directory root (same toolchain)"
+	else
+		# Fallback to built package
+		local LIBLOG_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/android-liblog" -name "*.deb" 2>/dev/null | head -1)
+		if [ -n "$LIBLOG_DEB" ] && [ -f "$LIBLOG_DEB" ]; then
+			local LIBLOG_STAGING_DIR="$BUILD/staging/android-liblog"
+			mkdir -p "$LIBLOG_STAGING_DIR"
+			if [ ! -d "$LIBLOG_STAGING_DIR/usr/lib" ]; then
+				dpkg-deb -x "$LIBLOG_DEB" "$LIBLOG_STAGING_DIR" 2>/dev/null
+			fi
+			if [ -d "$LIBLOG_STAGING_DIR/usr/lib" ]; then
+				LIBLOG_LIB="-L$LIBLOG_STAGING_DIR/usr/lib"
+				# Copy to staging for linking
+				cp "$LIBLOG_STAGING_DIR/usr/lib/liblog.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+				warning_msg "Using liblog.so from package (may have glibc version mismatch)"
+			fi
+		fi
 	fi
 	
 	# Patch Makefile to use cross-compiler and set use_binder=y
@@ -400,8 +438,13 @@ EOF
 	fi
 	
 	# Remove -lboost_system from linker flags (boost::interprocess is header-only)
+	# Use perl for more reliable pattern matching
 	if grep -q "-lboost_system" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
-		sed -i 's/-lboost_system //g' "$PKG_BUILD_DIR/Makefile"
+		# Use perl to remove -lboost_system with proper word boundary matching
+		perl -i -pe 's/\s+-lboost_system\s+/ /g; s/\s+-lboost_system$//g; s/-lboost_system\s+//g' "$PKG_BUILD_DIR/Makefile" 2>/dev/null || \
+		sed -i 's/\s*-lboost_system\s*/ /g' "$PKG_BUILD_DIR/Makefile"
+		# Clean up any double spaces
+		sed -i 's/  \+/ /g' "$PKG_BUILD_DIR/Makefile"
 		info_msg "Removed -lboost_system from Makefile (boost::interprocess is header-only)"
 	fi
 	
@@ -437,10 +480,15 @@ EOF
 	if [ -z "$CXX_VALUE" ]; then
 		CXX_VALUE="$CXX"
 	fi
-	# Get CXXFLAGS from Makefile
+	# Update CXXFLAGS to use C++17 for designated initializers support (GCC 7.3.1 supports C++17)
+	if grep -q "std=c++14" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+		sed -i 's/-std=c++14/-std=c++17/g' "$PKG_BUILD_DIR/Makefile"
+		info_msg "Updated CXXFLAGS to use C++17 for designated initializers support"
+	fi
+	# Get CXXFLAGS from Makefile (after update)
 	local CXXFLAGS_VALUE=$(grep "^CXXFLAGS" "$PKG_BUILD_DIR/Makefile" 2>/dev/null | head -1 | sed 's/^CXXFLAGS[[:space:]]*+=[[:space:]]*//')
 	if [ -z "$CXXFLAGS_VALUE" ]; then
-		CXXFLAGS_VALUE="-Wall -std=c++14"
+		CXXFLAGS_VALUE="-Wall -std=c++17"
 	fi
 	# Find the line number of the pattern rule and replace the next line
 	local LINE_NUM=$(grep -n "^\$(AML_BUILD_DIR)/%.o: %.cpp" "$PKG_BUILD_DIR/Makefile" | cut -d: -f1)
@@ -490,6 +538,16 @@ EOF
 		# Add library paths to LDFLAGS lines (used for libaudio_client.so linking)
 		sed -i "/^LDFLAGS/s|LDFLAGS+=\\(.*\\)|LDFLAGS+=$LDFLAGS_ESC \\1|" "$PKG_BUILD_DIR/Makefile"
 		info_msg "Added library paths to Makefile LDFLAGS: $LDFLAGS_EXTRA"
+	fi
+	
+	# Remove -lboost_system from linker flags AFTER all LDFLAGS modifications
+	# (boost::interprocess is header-only, no library needed)
+	# Use simple sed to remove all occurrences
+	if grep -q "lboost_system" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
+		sed -i 's/-lboost_system//g' "$PKG_BUILD_DIR/Makefile"
+		# Clean up any double spaces that might result
+		sed -i 's/  \+/ /g' "$PKG_BUILD_DIR/Makefile"
+		info_msg "Removed -lboost_system from Makefile (boost::interprocess is header-only)"
 	fi
 	
 	# Set use_binder=y for build

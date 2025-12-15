@@ -1,0 +1,16 @@
+fix-expat-noconfig.patch
+fix-expat-cmake.patch
+Detect_billion_laughs_attack.patch
+Cover_amplification_tracking.patch
+CVE-2024-45490-1.patch
+CVE-2024-45490-2.patch
+CVE-2024-45490-3.patch
+CVE-2024-45491.patch
+CVE-2024-45492.patch
+CVE-2024-50602-1.patch
+CVE-2024-50602-2.patch
+CVE-2024-50602-3.patch
+CVE-2024-8176-pre.patch
+CVE-2024-8176-test-pre.patch
+CVE-2024-8176-1.patch
+CVE-2024-8176-2.patch

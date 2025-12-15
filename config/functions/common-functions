@@ -319,7 +319,66 @@ install_deb_chroot()
 	cp $package $ROOTFS_TEMP/root/$name
 	info_msg "Installing $name in chroot..."
 	mount_chroot "$ROOTFS_TEMP"
-	chroot $ROOTFS_TEMP /bin/bash -c "dpkg -i /root/$name" || exit 1
+	
+	# Debug output for troubleshooting linux-headers installation issues
+	if [[ "$name" == *"linux-headers"* ]]; then
+		info_msg "DEBUG: Installing linux-headers package: $name"
+		info_msg "DEBUG: Package path: $package"
+		info_msg "DEBUG: Checking chroot environment before installation..."
+		chroot $ROOTFS_TEMP /bin/bash -c "echo 'DEBUG: Current directory:'; pwd; echo 'DEBUG: Checking /usr/src:'; ls -la /usr/src/ 2>&1 | head -10; echo 'DEBUG: Checking for make:'; which make 2>&1 || echo 'make not found'; echo 'DEBUG: Checking for gcc:'; which gcc 2>&1 || echo 'gcc not found'; echo 'DEBUG: Environment variables:'; env | grep -E 'PATH|CC|CXX|ARCH' | head -10" 2>&1 || true
+		info_msg "DEBUG: About to run dpkg -i /root/$name"
+		info_msg "DEBUG: Unsetting CC/CXX/CROSS_COMPILE to use native compilers in postinst script"
+	fi
+	
+	# Capture full output for debugging - run dpkg with explicit output redirection
+	local install_output
+	local install_status
+	
+	if [[ "$name" == *"linux-headers"* ]]; then
+		# For headers, unset cross-compiler environment variables so postinst uses native compilers
+		# The postinst script needs to compile native tools, not cross-compile
+		info_msg "DEBUG: Executing dpkg installation (this may take a while)..."
+		install_output=$(chroot $ROOTFS_TEMP /bin/bash -c "unset CC CXX CROSS_COMPILE CROSS_COMPILE_PATH; set -x; dpkg -i /root/$name 2>&1; echo 'DPKG_EXIT_CODE:' \$?" 2>&1)
+		# Extract exit code from output
+		install_status=$(echo "$install_output" | grep -E "^DPKG_EXIT_CODE:" | tail -1 | awk '{print $2}' || echo "1")
+		# Remove the exit code line from output
+		install_output=$(echo "$install_output" | grep -v "^DPKG_EXIT_CODE:")
+	else
+		install_output=$(chroot $ROOTFS_TEMP /bin/bash -c "dpkg -i /root/$name 2>&1; echo 'DPKG_EXIT_CODE:' \$?" 2>&1)
+		install_status=$(echo "$install_output" | grep -E "^DPKG_EXIT_CODE:" | tail -1 | awk '{print $2}' || echo "1")
+		install_output=$(echo "$install_output" | grep -v "^DPKG_EXIT_CODE:")
+	fi
+	
+	if [ "$install_status" = "0" ]; then
+		info_msg "Package $name installed successfully"
+		if [[ "$name" == *"linux-headers"* ]]; then
+			info_msg "DEBUG: Installation successful, showing last 20 lines of output:"
+			echo "$install_output" | tail -20 | while IFS= read -r line; do
+				info_msg "DEBUG: $line"
+			done
+		fi
+	else
+		error_msg "Failed to install $name (exit code: $install_status)"
+		info_msg "DEBUG: Full dpkg output:"
+		echo "$install_output" | while IFS= read -r line; do
+			info_msg "DEBUG: $line"
+		done
+		if [[ "$name" == *"linux-headers"* ]]; then
+			info_msg "DEBUG: Checking package status after failed installation:"
+			chroot $ROOTFS_TEMP /bin/bash -c "dpkg -l | grep -E 'linux-headers|ii|rc|un'" 2>&1 || true
+			info_msg "DEBUG: Checking if package files were extracted:"
+			chroot $ROOTFS_TEMP /bin/bash -c "ls -la /usr/src/ 2>&1 | head -20" 2>&1 || true
+			info_msg "DEBUG: Checking postinst script location:"
+			chroot $ROOTFS_TEMP /bin/bash -c "find /var/lib/dpkg/info -name '*linux-headers*.postinst' -exec ls -la {} \; 2>&1" 2>&1 || true
+			info_msg "DEBUG: Checking postinst script content (first 50 lines):"
+			chroot $ROOTFS_TEMP /bin/bash -c "find /var/lib/dpkg/info -name '*linux-headers*.postinst' -exec head -50 {} \; 2>&1" 2>&1 || true
+			info_msg "DEBUG: Checking if postinst is currently running:"
+			chroot $ROOTFS_TEMP /bin/bash -c "ps aux | grep -E 'postinst|make|gcc' | head -10" 2>&1 || true
+		fi
+		umount_chroot "$ROOTFS_TEMP"
+		rm -f $ROOTFS_TEMP/root/$name
+		exit 1
+	fi
 	umount_chroot "$ROOTFS_TEMP"
 	rm -f $ROOTFS_TEMP/root/$name
 }

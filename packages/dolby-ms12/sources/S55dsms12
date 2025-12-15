@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Dolby security firmware decryption
+
+case "$1" in
+    start)
+    /etc/init.d/dms12.sh &
+    ;;
+    *)
+    echo "Usage: S83dsd {start}" >&2
+    exit 1
+    ;;
+esac
