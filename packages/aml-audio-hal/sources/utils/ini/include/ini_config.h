@@ -23,9 +23,9 @@
     #define CS_DEFAULT_PANEL_PQ_DB_FILE_NAME           "input/pq/pq_default.bin"
     #define CS_DEFAULT_AUDIO_PARAM_INI_FILE_NAME       "input/audio/eq_drc/aml_internal_hw_eq.ini"
 #else
-    #define CS_DEFAULT_PANEL_INI_FILE_NAME             "/system/etc/ID_0_Pnl_FACTORY.ini"
-    #define CS_DEFAULT_PANEL_PQ_DB_FILE_NAME           "/system/etc/pq_default.bin"
-    #define CS_DEFAULT_AUDIO_PARAM_INI_FILE_NAME       "/system/etc/ID_0_Aud_eq_drc_FACTORY.ini"
+    #define CS_DEFAULT_PANEL_INI_FILE_NAME             "/etc/ID_0_Pnl_FACTORY.ini"
+    #define CS_DEFAULT_PANEL_PQ_DB_FILE_NAME           "/etc/pq_default.bin"
+    #define CS_DEFAULT_AUDIO_PARAM_INI_FILE_NAME       "/etc/ID_0_Aud_eq_drc_FACTORY.ini"
 #endif
 
 #define CC_RW_KEY_USE_OTHER_MODULE    (0)

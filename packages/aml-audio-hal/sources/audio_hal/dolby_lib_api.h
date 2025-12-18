@@ -23,7 +23,7 @@
 #else
 #define DOLBY_MS12_LIB_PATH_A "/odm/lib/ms12/libdolbyms12.so"
 #endif
-#define DOLBY_TUNING_DAT "/vendor/etc/ms12_tuning.dat"
+#define DOLBY_TUNING_DAT "/etc/ms12_tuning.dat"
 
 /** Dolby Lib Type used in Current System */
 typedef enum eDolbyLibType {

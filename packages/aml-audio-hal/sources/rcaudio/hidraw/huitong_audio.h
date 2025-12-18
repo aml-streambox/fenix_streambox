@@ -64,7 +64,7 @@ extern "C"
 #define PORT_MM 0    // this macro is different between amlogic and huitong
 #endif
 /* number of frames per period */
-#define MIXER_XML_PATH "/system/etc/mixer_paths.xml"
+#define MIXER_XML_PATH "/etc/mixer_paths.xml"
 
 /* number of frames per period */
 #define DEFAULT_PERIOD_SIZE  1024   //(1024 * 2)

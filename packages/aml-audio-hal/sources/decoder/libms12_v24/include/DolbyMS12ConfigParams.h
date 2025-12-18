@@ -39,7 +39,7 @@
 //#define DEFAULT_DUMMY2_DDP_FILE_NAME "dummy_main2.ac3"
 #define DEFAULT_DUMMY_DDP_FILE_NAME "dummy.ac3"
 #define DEFAULT_DUMMY2_DDP_FILE_NAME "dummy.ac3"
-#define DEFAULT_DAP_TUNING_FILE_NAME "/vendor/etc/ms12_tuning.dat"
+#define DEFAULT_DAP_TUNING_FILE_NAME "/etc/ms12_tuning.dat"
 
 #define RUNTIME_CONFIG_PARAMS_INDEX 100
 

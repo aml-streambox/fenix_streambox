@@ -192,11 +192,7 @@
 #define VX_NB_SAMPLING_RATE 8000
 #define VX_WB_SAMPLING_RATE 16000
 
-#ifdef BUILD_LINUX
 #define MIXER_XML_PATH "/etc/mixer_paths.xml"
-#else
-#define MIXER_XML_PATH "/vendor/etc/mixer_paths.xml"
-#endif
 #define DOLBY_MS12_INPUT_FORMAT_TEST
 
 #define IEC61937_PACKET_SIZE_OF_AC3                     (0x1800)

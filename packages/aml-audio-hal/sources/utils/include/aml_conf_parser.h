@@ -79,7 +79,7 @@ struct parser {
 };
 
 /* load from */
-#define AML_PARAM_AUDIO_HAL_SYSTEM "/system/etc/tvaudiohal.conf"
+#define AML_PARAM_AUDIO_HAL_SYSTEM "/etc/tvaudiohal.conf"
 /* save to */
 #define AML_PARAM_AUDIO_HAL_PARAM  "/mnt/vendor/param/tvaudiohal.conf"
 
