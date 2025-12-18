@@ -143,7 +143,7 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
-Depends: android-binder, aml-audio-service, zlib1g
+Depends: android-binder, aml-audio-service, zlib1g, systemd
 Section: utils
 Priority: optional
 Description: Amlogic TV Server Stream Box
@@ -762,6 +762,15 @@ EOF
 		warning_msg "tvconfig source directory not found: $TVCONFIG_SRC"
 		warning_msg "tvconfig files will not be included in the package"
 		warning_msg "Please ensure unpack() function has copied files from Yocto"
+	fi
+	
+	# Install systemd service file
+	if [ -f "$PKGS_DIR/$PKG_NAME/files/tvserver.service" ]; then
+		mkdir -p "$pkgdir/lib/systemd/system"
+		install -m 644 "$PKGS_DIR/$PKG_NAME/files/tvserver.service" "$pkgdir/lib/systemd/system/" || {
+			warning_msg "Failed to install tvserver.service"
+		}
+		info_msg "Installed tvserver.service"
 	fi
 	
 	# Strip binaries and libraries
