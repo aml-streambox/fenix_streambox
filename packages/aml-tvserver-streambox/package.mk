@@ -733,19 +733,31 @@ EOF
 		return 1
 	fi
 	
-	# Install tvconfig files from Yocto sources to /etc/tvconfig/
+	# Install tvconfig files from Yocto sources
+	# Structure: PQ/ -> /etc/PQ/, tvconfig/ -> /etc/tvconfig/
 	local TVCONFIG_SRC="$PKGS_DIR/$PKG_NAME/sources/tvconfig"
 	if [ -d "$TVCONFIG_SRC" ]; then
-		info_msg "Installing tvconfig files to /etc/tvconfig/..."
-		mkdir -p "$pkgdir/etc/tvconfig"
+		info_msg "Installing tvconfig files..."
 		
-		# Copy all tvconfig subdirectories and files
-		# This includes PQ/, tvconfig/panel/, tvconfig/audio/, etc.
-		cp -r "$TVCONFIG_SRC"/* "$pkgdir/etc/tvconfig/" || {
-			error_msg "Failed to copy tvconfig files to package directory"
-			return 1
-		}
-		info_msg "tvconfig files installed to $pkgdir/etc/tvconfig/"
+		# Install PQ/ to /etc/PQ/
+		if [ -d "$TVCONFIG_SRC/PQ" ]; then
+			mkdir -p "$pkgdir/etc/PQ"
+			cp -r "$TVCONFIG_SRC/PQ"/* "$pkgdir/etc/PQ/" || {
+				error_msg "Failed to copy PQ files to package directory"
+				return 1
+			}
+			info_msg "PQ files installed to $pkgdir/etc/PQ/"
+		fi
+		
+		# Install tvconfig/ contents to /etc/tvconfig/
+		if [ -d "$TVCONFIG_SRC/tvconfig" ]; then
+			mkdir -p "$pkgdir/etc/tvconfig"
+			cp -r "$TVCONFIG_SRC/tvconfig"/* "$pkgdir/etc/tvconfig/" || {
+				error_msg "Failed to copy tvconfig files to package directory"
+				return 1
+			}
+			info_msg "tvconfig files installed to $pkgdir/etc/tvconfig/"
+		fi
 	else
 		warning_msg "tvconfig source directory not found: $TVCONFIG_SRC"
 		warning_msg "tvconfig files will not be included in the package"
