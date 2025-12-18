@@ -59,7 +59,7 @@ detect_cross_compiler() {
 }
 
 PKG_NAME="aml-tvserver-streambox"
-PKG_VERSION="58781d31b991032bf3f1822ec9fe2a54ef7237d1"
+PKG_VERSION="47b7823c2af14338e873c5ceb8fd2a9c4f277af2"
 PKG_SHA256=""
 PKG_SOURCE_DIR="aml_tvserver_streambox-${PKG_VERSION}*"
 PKG_SITE="https://github.com/anshi233/aml_tvserver_streambox"
@@ -69,6 +69,66 @@ PKG_LICENSE="Proprietary"
 PKG_SHORTDESC="Amlogic TV Server Stream Box"
 PKG_SOURCE_NAME="aml_tvserver_streambox-${PKG_VERSION}.tar.gz"
 PKG_NEED_BUILD="YES"
+
+# Verify tvconfig files exist in packages folder and extract package
+# Files must be pre-copied to packages/aml-tvserver-streambox/sources/tvconfig/
+unpack() {
+	local TVCONFIG_DEST="$PKGS_DIR/$PKG_NAME/sources/tvconfig"
+	
+	# Check if tvconfig files exist in packages folder
+	if [ ! -d "$TVCONFIG_DEST" ] || [ -z "$(ls -A "$TVCONFIG_DEST" 2>/dev/null)" ]; then
+		error_msg "tvconfig files not found in packages folder: $TVCONFIG_DEST"
+		error_msg "Please copy tvconfig files from Yocto to the packages folder before building:"
+		error_msg "  mkdir -p $TVCONFIG_DEST"
+		error_msg "  cp -r <yocto_path>/aml-comp/prebuilt/vendor/etc/tvconfig/a311d2/* $TVCONFIG_DEST/"
+		return 1
+	fi
+	
+	info_msg "tvconfig files found in packages folder"
+	
+	# Extract the package (since we define unpack(), we need to handle extraction ourselves)
+	if [ -n "$PKG_URL" ] && [ -n "$PKG_SOURCE_NAME" ]; then
+		local DOWNLOAD_DIR="$DOWNLOAD_PKG_DIR/$PKG_NAME"
+		local SOURCE_FILE="$DOWNLOAD_DIR/$PKG_SOURCE_NAME"
+		
+		if [ ! -f "$SOURCE_FILE" ]; then
+			error_msg "Source file not found: $SOURCE_FILE"
+			return 1
+		fi
+		
+		info_msg "Extracting $PKG_SOURCE_NAME to $BUILD..."
+		
+		# Extract based on file extension
+		case "$PKG_SOURCE_NAME" in
+			*.tar.gz|*.tgz)
+				tar -xzf "$SOURCE_FILE" -C "$BUILD" || {
+					error_msg "Failed to extract $PKG_SOURCE_NAME"
+					return 1
+				}
+				;;
+			*.tar.xz|*.txz)
+				tar -xJf "$SOURCE_FILE" -C "$BUILD" || {
+					error_msg "Failed to extract $PKG_SOURCE_NAME"
+					return 1
+				}
+				;;
+			*.tar.bz2|*.tbz)
+				tar -xjf "$SOURCE_FILE" -C "$BUILD" || {
+					error_msg "Failed to extract $PKG_SOURCE_NAME"
+					return 1
+				}
+				;;
+			*)
+				error_msg "Unknown archive format: $PKG_SOURCE_NAME"
+				return 1
+				;;
+		esac
+		
+		info_msg "Package extracted successfully"
+	fi
+	
+	return 0
+}
 
 make_target() {
 	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
@@ -88,7 +148,7 @@ Section: utils
 Priority: optional
 Description: Amlogic TV Server Stream Box
  ${PKG_SHORTDESC}
- Provides libtv.so, libtvclient.so, tvservice, and tvtest.
+ Provides libtv.so, libtvclient.so, tvservice, and hdmiin-demo.
 EOF
 
 	# Build the package using the Makefile in the source
@@ -592,9 +652,13 @@ EOF
 		error_msg "tvservice not found after build"
 		BUILD_FAILED=1
 	fi
-	if [ ! -f "$OUT_DIR/tvtest" ]; then
-		error_msg "tvtest not found after build"
+	if [ ! -f "$OUT_DIR/hdmiin-demo" ]; then
+		error_msg "hdmiin-demo not found after build"
 		BUILD_FAILED=1
+	fi
+	# tvtest is optional (not in BUILD_TARGETS by default)
+	if [ ! -f "$OUT_DIR/tvtest" ]; then
+		warning_msg "tvtest not found after build (optional, not in BUILD_TARGETS)"
 	fi
 	
 	if [ "$BUILD_FAILED" = 1 ]; then
@@ -602,18 +666,90 @@ EOF
 		return 1
 	fi
 	
-	# Use Makefile's install target
-	info_msg "Installing built binaries and libraries..."
-	make install || {
-		error_msg "Install failed"
-		return 1
-	}
+	# Manually install built binaries and libraries to package directory
+	# (More reliable than relying on make install which may not use TARGET_DIR correctly)
+	info_msg "Installing built binaries and libraries to package directory..."
 	
-	# Verify installation
-	if [ ! -f "$pkgdir/usr/lib/libtv.so" ] || [ ! -f "$pkgdir/usr/lib/libtvclient.so" ] || \
-	   [ ! -f "$pkgdir/usr/bin/tvservice" ] || [ ! -f "$pkgdir/usr/bin/tvtest" ]; then
-		error_msg "Installation verification failed - some files are missing in package directory"
+	if [ -f "$OUT_DIR/libtv.so" ]; then
+		install -m 755 -D "$OUT_DIR/libtv.so" "$pkgdir/usr/lib/libtv.so" || {
+			error_msg "Failed to install libtv.so"
+			return 1
+		}
+		info_msg "Installed libtv.so"
+	else
+		error_msg "libtv.so not found in $OUT_DIR"
 		return 1
+	fi
+	
+	if [ -f "$OUT_DIR/libtvclient.so" ]; then
+		install -m 755 -D "$OUT_DIR/libtvclient.so" "$pkgdir/usr/lib/libtvclient.so" || {
+			error_msg "Failed to install libtvclient.so"
+			return 1
+		}
+		info_msg "Installed libtvclient.so"
+	else
+		error_msg "libtvclient.so not found in $OUT_DIR"
+		return 1
+	fi
+	
+	if [ -f "$OUT_DIR/tvservice" ]; then
+		install -m 755 -D "$OUT_DIR/tvservice" "$pkgdir/usr/bin/tvservice" || {
+			error_msg "Failed to install tvservice"
+			return 1
+		}
+		info_msg "Installed tvservice"
+	else
+		error_msg "tvservice not found in $OUT_DIR"
+		return 1
+	fi
+	
+	if [ -f "$OUT_DIR/hdmiin-demo" ]; then
+		install -m 755 -D "$OUT_DIR/hdmiin-demo" "$pkgdir/usr/bin/hdmiin-demo" || {
+			error_msg "Failed to install hdmiin-demo"
+			return 1
+		}
+		info_msg "Installed hdmiin-demo"
+	else
+		error_msg "hdmiin-demo not found in $OUT_DIR"
+		return 1
+	fi
+	
+	# tvtest is not in BUILD_TARGETS, so it's not built - skip installation
+	if [ -f "$OUT_DIR/tvtest" ]; then
+		install -m 755 -D "$OUT_DIR/tvtest" "$pkgdir/usr/bin/tvtest" || {
+			warning_msg "Failed to install tvtest (optional)"
+		}
+		info_msg "Installed tvtest (optional)"
+	fi
+	
+	# Verify installation (tvtest is not built, so we don't check for it)
+	if [ ! -f "$pkgdir/usr/lib/libtv.so" ] || [ ! -f "$pkgdir/usr/lib/libtvclient.so" ] || \
+	   [ ! -f "$pkgdir/usr/bin/tvservice" ] || [ ! -f "$pkgdir/usr/bin/hdmiin-demo" ]; then
+		error_msg "Installation verification failed - some files are missing in package directory"
+		error_msg "Checking build outputs in $OUT_DIR:"
+		ls -la "$OUT_DIR"/*.so "$OUT_DIR"/tvservice 2>/dev/null || true
+		error_msg "Checking package directory $pkgdir:"
+		find "$pkgdir" -type f 2>/dev/null | head -20 || true
+		return 1
+	fi
+	
+	# Install tvconfig files from Yocto sources to /etc/tvconfig/
+	local TVCONFIG_SRC="$PKGS_DIR/$PKG_NAME/sources/tvconfig"
+	if [ -d "$TVCONFIG_SRC" ]; then
+		info_msg "Installing tvconfig files to /etc/tvconfig/..."
+		mkdir -p "$pkgdir/etc/tvconfig"
+		
+		# Copy all tvconfig subdirectories and files
+		# This includes PQ/, tvconfig/panel/, tvconfig/audio/, etc.
+		cp -r "$TVCONFIG_SRC"/* "$pkgdir/etc/tvconfig/" || {
+			error_msg "Failed to copy tvconfig files to package directory"
+			return 1
+		}
+		info_msg "tvconfig files installed to $pkgdir/etc/tvconfig/"
+	else
+		warning_msg "tvconfig source directory not found: $TVCONFIG_SRC"
+		warning_msg "tvconfig files will not be included in the package"
+		warning_msg "Please ensure unpack() function has copied files from Yocto"
 	fi
 	
 	# Strip binaries and libraries
