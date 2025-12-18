@@ -734,22 +734,24 @@ EOF
 	fi
 	
 	# Install tvconfig files from Yocto sources
-	# Structure: PQ/ -> /etc/PQ/, tvconfig/ -> /etc/tvconfig/
+	# Structure: PQ/ -> /etc/tvconfig/pq/ (lowercase), tvconfig/ -> /etc/tvconfig/ (flattened)
 	local TVCONFIG_SRC="$PKGS_DIR/$PKG_NAME/sources/tvconfig"
 	if [ -d "$TVCONFIG_SRC" ]; then
 		info_msg "Installing tvconfig files..."
 		
-		# Install PQ/ to /etc/PQ/
+		# Install PQ/ to /etc/tvconfig/pq/ (lowercase, inside tvconfig)
+		# Source code expects /etc/tvconfig/pq/pq_default.ini (lowercase pq)
 		if [ -d "$TVCONFIG_SRC/PQ" ]; then
-			mkdir -p "$pkgdir/etc/PQ"
-			cp -r "$TVCONFIG_SRC/PQ"/* "$pkgdir/etc/PQ/" || {
+			mkdir -p "$pkgdir/etc/tvconfig/pq"
+			cp -r "$TVCONFIG_SRC/PQ"/* "$pkgdir/etc/tvconfig/pq/" || {
 				error_msg "Failed to copy PQ files to package directory"
 				return 1
 			}
-			info_msg "PQ files installed to $pkgdir/etc/PQ/"
+			info_msg "PQ files installed to $pkgdir/etc/tvconfig/pq/"
 		fi
 		
-		# Install tvconfig/ contents to /etc/tvconfig/
+		# Install tvconfig/ contents to /etc/tvconfig/ (flattened, no nested tvconfig)
+		# Source code expects /etc/tvconfig/panel/, /etc/tvconfig/audio/, etc.
 		if [ -d "$TVCONFIG_SRC/tvconfig" ]; then
 			mkdir -p "$pkgdir/etc/tvconfig"
 			cp -r "$TVCONFIG_SRC/tvconfig"/* "$pkgdir/etc/tvconfig/" || {
