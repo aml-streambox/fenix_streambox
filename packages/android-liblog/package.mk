@@ -58,7 +58,7 @@ detect_cross_compiler() {
 }
 
 PKG_NAME="android-liblog"
-PKG_VERSION="amlogic-yocto-1.0"
+PKG_VERSION="1.0-amlogic-yocto"
 PKG_SHA256=""
 PKG_SOURCE_DIR=""
 PKG_SITE=""

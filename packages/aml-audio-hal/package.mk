@@ -60,7 +60,7 @@ detect_cross_compiler() {
 }
 
 PKG_NAME="aml-audio-hal"
-PKG_VERSION="amlogic-yocto-1.0"
+PKG_VERSION="1.0-amlogic-yocto"
 PKG_SHA256=""
 PKG_SOURCE_DIR=""
 PKG_SITE=""
@@ -92,8 +92,6 @@ Priority: optional
 Description: Amlogic Audio HAL Library
  ${PKG_SHORTDESC}
  Provides libaudio_hal.so.1.0 for audio hardware abstraction.
- Includes header files in /usr/include/hardware and /usr/include/system
- for development purposes.
 EOF
 
 	# Build the package using CMake
@@ -263,19 +261,6 @@ EOF
 		fi
 	fi
 	
-	# Check build/staging/libexpat1 (if package was built earlier)
-	if [ "$EXPAT_LIB_FOUND" = false ]; then
-		local EXPAT_STAGING_DIR="$BUILD/staging/libexpat1"
-		if [ -d "$EXPAT_STAGING_DIR/usr/lib" ]; then
-			cp "$EXPAT_STAGING_DIR/usr/lib"/*/libexpat.so* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			cp "$EXPAT_STAGING_DIR/usr/lib/libexpat.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			if [ -f "$STAGING_DIR/usr/lib/libexpat.so" ] || [ -f "$STAGING_DIR/usr/lib/libexpat.so.1" ]; then
-				EXPAT_LIB_FOUND=true
-				info_msg "Copied libexpat.so from build/staging/libexpat1"
-			fi
-		fi
-	fi
-	
 	# Check rootfs (if it was built)
 	if [ "$EXPAT_LIB_FOUND" = false ] && [ -n "$ROOTFS" ] && [ -d "$ROOTFS" ]; then
 		if [ -f "$ROOTFS/usr/lib/aarch64-linux-gnu/libexpat.so.1" ]; then
@@ -289,24 +274,10 @@ EOF
 		fi
 	fi
 	
-	# Verify library is actually in staging directory and create symlink if needed
-	if [ -f "$STAGING_DIR/usr/lib/libexpat.so.1" ] && [ ! -f "$STAGING_DIR/usr/lib/libexpat.so" ]; then
-		# Create symlink from libexpat.so.1 to libexpat.so for linker
-		cd "$STAGING_DIR/usr/lib"
-		ln -sf libexpat.so.1 libexpat.so 2>/dev/null || true
-		cd - >/dev/null
-		EXPAT_LIB_FOUND=true
-		info_msg "Created libexpat.so symlink in staging directory"
-	elif [ -f "$STAGING_DIR/usr/lib/libexpat.so" ]; then
-		EXPAT_LIB_FOUND=true
-		info_msg "Verified libexpat.so is in staging directory"
-	fi
-	
+	# Warn if not found (but don't fail yet - let CMake try to find it)
 	if [ "$EXPAT_LIB_FOUND" = false ]; then
-		# Warn if not found (but don't fail yet - let CMake try to find it)
 		warning_msg "libexpat.so not found in packages or rootfs. Build may fail if libexpat1 package is not available."
 		warning_msg "Please create libexpat1 package by extracting from .deb file to packages/libexpat1/sources/"
-		warning_msg "Or build libexpat1 package first: build-pkg.sh libexpat1"
 	fi
 
 	# Copy libcutils.so from aml-audio-utils build
@@ -429,14 +400,7 @@ EOF
 	# We'll use -U__USE_GNU to undefine it first, then let features.h define it properly
 	local CMAKE_C_FLAGS="-fPIC -I$STAGING_DIR/usr/include -include time.h -include stdint.h -U__USE_GNU"
 	local CMAKE_CXX_FLAGS="-fPIC -I$STAGING_DIR/usr/include -U__USE_GNU"
-	local CMAKE_LD_FLAGS="-L$STAGING_DIR/usr/lib -Wl,-rpath-link,$STAGING_DIR/usr/lib"
-	
-	# Verify libexpat.so is accessible before configuring CMake
-	if [ ! -f "$STAGING_DIR/usr/lib/libexpat.so" ] && [ ! -f "$STAGING_DIR/usr/lib/libexpat.so.1" ]; then
-		error_msg "libexpat.so not found in $STAGING_DIR/usr/lib/"
-		error_msg "Please build libexpat1 package first: build-pkg.sh libexpat1"
-		return 1
-	fi
+	local CMAKE_LD_FLAGS="-L$STAGING_DIR/usr/lib"
 	
 	cmake "$PKG_BUILD_DIR" \
 		-DCMAKE_SYSTEM_NAME=Linux \
@@ -448,8 +412,6 @@ EOF
 		-DCMAKE_EXE_LINKER_FLAGS="$CMAKE_LD_FLAGS" \
 		-DCMAKE_SHARED_LINKER_FLAGS="$CMAKE_LD_FLAGS" \
 		-DCMAKE_PREFIX_PATH="$STAGING_DIR/usr" \
-		-DCMAKE_LIBRARY_PATH="$STAGING_DIR/usr/lib" \
-		-DCMAKE_INCLUDE_PATH="$STAGING_DIR/usr/include" \
 		-DAML_BUILD_DIR="$CMAKE_BUILD_DIR" \
 		-DCMAKE_INSTALL_PREFIX="/usr" \
 		-DCMAKE_BUILD_TYPE=Release \
@@ -473,38 +435,15 @@ EOF
 		return 1
 	}
 
-	# Install headers from sources/include directory
-	local HEADER_SRC_DIR="$PKG_DIR/sources/include"
-	if [ -d "$HEADER_SRC_DIR" ]; then
-		# Install hardware headers
-		if [ -d "$HEADER_SRC_DIR/hardware" ]; then
-			install -m 644 "$HEADER_SRC_DIR/hardware"/* "${pkgdir}/usr/include/hardware/" 2>/dev/null || true
-			info_msg "Installed hardware headers"
-		fi
-		# Install system headers (EXCLUSIVE to aml-audio-hal)
-		if [ -d "$HEADER_SRC_DIR/system" ]; then
-			install -m 644 "$HEADER_SRC_DIR/system"/* "${pkgdir}/usr/include/system/" 2>/dev/null || true
-			info_msg "Installed system headers"
-		fi
-		# Do NOT install audio_effects, audio_route, audio_utils, basic_utils, cutils, media, sys headers
-		# These are either provided by dependencies or internal build headers
-		# Install only root-level header files that are exclusive to aml-audio-hal
-		for header_file in Virtualx_v4.h Virtualx.h; do
-			if [ -f "$HEADER_SRC_DIR/$header_file" ]; then
-				install -m 644 "$HEADER_SRC_DIR/$header_file" "${pkgdir}/usr/include/" 2>/dev/null || true
-				info_msg "Installed $header_file"
-			fi
-		done
-		# Also try from PKG_BUILD_DIR/include (if CMake copies them there)
-		if [ -d "$PKG_BUILD_DIR/include/hardware" ]; then
-			install -m 644 "$PKG_BUILD_DIR/include/hardware"/* "${pkgdir}/usr/include/hardware/" 2>/dev/null || true
-		fi
-		if [ -d "$PKG_BUILD_DIR/include/system" ]; then
-			install -m 644 "$PKG_BUILD_DIR/include/system"/* "${pkgdir}/usr/include/system/" 2>/dev/null || true
-		fi
-		if [ -f "$PKG_BUILD_DIR/include/Virtualx_v4.h" ]; then
-			install -m 644 "$PKG_BUILD_DIR/include/Virtualx_v4.h" "${pkgdir}/usr/include/" 2>/dev/null || true
-		fi
+	# Install headers (from Yocto recipe do_install:append)
+	if [ -d "$PKG_BUILD_DIR/include/hardware" ]; then
+		install -m 644 "$PKG_BUILD_DIR/include/hardware"/* "${pkgdir}/usr/include/hardware/" 2>/dev/null || true
+	fi
+	if [ -d "$PKG_BUILD_DIR/include/system" ]; then
+		install -m 644 "$PKG_BUILD_DIR/include/system"/* "${pkgdir}/usr/include/system/" 2>/dev/null || true
+	fi
+	if [ -f "$PKG_BUILD_DIR/include/Virtualx_v4.h" ]; then
+		install -m 644 "$PKG_BUILD_DIR/include/Virtualx_v4.h" "${pkgdir}/usr/include/" 2>/dev/null || true
 	fi
 
 	# Install configuration files (board-specific - VIM4 maps to T7)

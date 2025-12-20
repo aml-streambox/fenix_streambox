@@ -87,7 +87,6 @@ Priority: optional
 Description: Expat XML parser runtime library
  ${PKG_SHORTDESC}
  This package provides the runtime library for Expat XML parser.
- Includes header files in /usr/include for development purposes.
 EOF
 
 	# Build from source
@@ -113,56 +112,12 @@ EOF
 	# Apply Debian patches if they exist
 	if [ -d "$PKG_DIR/sources/debian/patches" ]; then
 		info_msg "Applying Debian patches..."
-		# Read patch series file if it exists to apply patches in order
-		local PATCH_SERIES="$PKG_DIR/sources/debian/patches/series"
-		if [ -f "$PATCH_SERIES" ]; then
-			# Apply patches in order from series file
-			while IFS= read -r patch_name || [ -n "$patch_name" ]; do
-				# Skip empty lines and comments
-				[ -z "$patch_name" ] && continue
-				[ "${patch_name#\#}" != "$patch_name" ] && continue
-				
-				local patch="$PKG_DIR/sources/debian/patches/$patch_name"
-				if [ -f "$patch" ]; then
-					info_msg "Applying patch: $patch_name"
-					# Debian patches expect "expat/lib/xmlparse.c" but we have "lib/xmlparse.c"
-					# The Index line shows "expat-2.6.1/expat/lib/xmlparse.c"
-					# Try -p2 first (strips "expat-2.6.1/expat/") then -p1 (strips "expat/")
-					if ! patch -p2 < "$patch" 2>/dev/null; then
-						if ! patch -p1 < "$patch" 2>/dev/null; then
-							# Try with fuzz as last resort
-							if ! patch -p2 --fuzz=3 < "$patch" 2>/dev/null; then
-								if ! patch -p1 --fuzz=3 < "$patch" 2>/dev/null; then
-									error_msg "Patch $patch_name failed to apply. Expected file: expat/lib/xmlparse.c or lib/xmlparse.c"
-									error_msg "Current directory structure:"
-									ls -la lib/ 2>/dev/null | head -5 || true
-									return 1
-								else
-									warning_msg "Patch $patch_name applied with fuzz=3 (-p1)"
-								fi
-							else
-								warning_msg "Patch $patch_name applied with fuzz=3 (-p2)"
-							fi
-						fi
-					fi
-				fi
-			done < "$PATCH_SERIES"
-		else
-			# Fallback: apply all patches in alphabetical order
-			for patch in "$PKG_DIR/sources/debian/patches"/*.patch; do
-				if [ -f "$patch" ] && [ "$(basename "$patch")" != "series" ]; then
-					info_msg "Applying patch: $(basename $patch)"
-					# Try different patch strip levels
-					if ! patch -p1 < "$patch" 2>/dev/null; then
-						if ! patch -p2 < "$patch" 2>/dev/null; then
-							warning_msg "Patch $(basename $patch) failed with both -p1 and -p2"
-							# Try to apply with fuzz
-							patch -p1 --fuzz=3 < "$patch" 2>/dev/null || warning_msg "Patch $(basename $patch) failed even with fuzz"
-						fi
-					fi
-				fi
-			done
-		fi
+		for patch in "$PKG_DIR/sources/debian/patches"/*.patch; do
+			if [ -f "$patch" ]; then
+				info_msg "Applying patch: $(basename $patch)"
+				patch -p1 < "$patch" || warning_msg "Patch $(basename $patch) may have failed"
+			fi
+		done
 	fi
 	
 	# Detect and verify cross-compiler
