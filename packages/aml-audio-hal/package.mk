@@ -218,66 +218,29 @@ EOF
 		cp "$AVSYNC_BUILD/src/libamlavsync.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
 	fi
 
-	# Copy libexpat.so from libexpat1 package (runtime library)
-	# Try multiple locations: built package, packages directory, rootfs
-	local EXPAT_LIB_FOUND=false
+	# Find libexpat.so from libexpat1 build folder
+	# libexpat1 must be built before aml-audio-hal (build order dependency)
+	# Try to find libexpat1 build directory (version might vary)
+	local EXPAT_BUILD_DIR=$(find "$BUILD" -maxdepth 1 -type d -name "libexpat1-*" 2>/dev/null | head -1)
 	
-	# Check built package
-	local EXPAT_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libexpat1" -name "*.deb" 2>/dev/null | head -1)
-	if [ -n "$EXPAT_DEB" ] && [ -f "$EXPAT_DEB" ]; then
-		local EXPAT_STAGING_DIR="$BUILD/staging/libexpat1"
-		mkdir -p "$EXPAT_STAGING_DIR"
-		if [ ! -d "$EXPAT_STAGING_DIR/usr/lib" ]; then
-			dpkg-deb -x "$EXPAT_DEB" "$EXPAT_STAGING_DIR" 2>/dev/null
-		fi
-		if [ -d "$EXPAT_STAGING_DIR/usr/lib" ]; then
-			cp "$EXPAT_STAGING_DIR/usr/lib"/*/libexpat.so* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			cp "$EXPAT_STAGING_DIR/usr/lib/libexpat.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			if [ -f "$STAGING_DIR/usr/lib/libexpat.so" ] || [ -f "$STAGING_DIR/usr/lib/libexpat.so.1" ]; then
-				EXPAT_LIB_FOUND=true
-				info_msg "Copied libexpat.so from libexpat1 package"
-			fi
+	local EXPAT_LIB_PATH=""
+	if [ -n "$EXPAT_BUILD_DIR" ] && [ -d "$EXPAT_BUILD_DIR" ]; then
+		# Look for libexpat.so in build/lib/.libs/ (autotools build location)
+		if [ -f "$EXPAT_BUILD_DIR/build/lib/.libs/libexpat.so" ]; then
+			EXPAT_LIB_PATH="$EXPAT_BUILD_DIR/build/lib/.libs"
+			info_msg "Found libexpat.so in libexpat1 build directory: $EXPAT_LIB_PATH"
+		elif [ -f "$EXPAT_BUILD_DIR/.libs/libexpat.so" ]; then
+			EXPAT_LIB_PATH="$EXPAT_BUILD_DIR/.libs"
+			info_msg "Found libexpat.so in libexpat1 build directory: $EXPAT_LIB_PATH"
 		fi
 	fi
 	
-	# Check packages directory for libexpat1 (extracted sources)
-	if [ "$EXPAT_LIB_FOUND" = false ]; then
-		local EXPAT_PKG_DIR="$PKGS_DIR/libexpat1"
-		# Check aarch64-linux-gnu subdirectory first (standard Debian layout)
-		if [ -d "$EXPAT_PKG_DIR/sources/usr/lib/aarch64-linux-gnu" ]; then
-			cp "$EXPAT_PKG_DIR/sources/usr/lib/aarch64-linux-gnu/libexpat.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			if [ -f "$STAGING_DIR/usr/lib/libexpat.so" ] || [ -f "$STAGING_DIR/usr/lib/libexpat.so.1" ]; then
-				EXPAT_LIB_FOUND=true
-				info_msg "Copied libexpat.so from libexpat1 package sources (aarch64-linux-gnu)"
-			fi
-		fi
-		# Also check direct usr/lib (fallback)
-		if [ "$EXPAT_LIB_FOUND" = false ] && [ -d "$EXPAT_PKG_DIR/sources/usr/lib" ]; then
-			cp "$EXPAT_PKG_DIR/sources/usr/lib/libexpat.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			if [ -f "$STAGING_DIR/usr/lib/libexpat.so" ] || [ -f "$STAGING_DIR/usr/lib/libexpat.so.1" ]; then
-				EXPAT_LIB_FOUND=true
-				info_msg "Copied libexpat.so from libexpat1 package sources"
-			fi
-		fi
-	fi
-	
-	# Check rootfs (if it was built)
-	if [ "$EXPAT_LIB_FOUND" = false ] && [ -n "$ROOTFS" ] && [ -d "$ROOTFS" ]; then
-		if [ -f "$ROOTFS/usr/lib/aarch64-linux-gnu/libexpat.so.1" ]; then
-			cp "$ROOTFS/usr/lib/aarch64-linux-gnu/libexpat.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			EXPAT_LIB_FOUND=true
-			info_msg "Copied libexpat.so from rootfs"
-		elif [ -f "$ROOTFS/usr/lib/libexpat.so.1" ]; then
-			cp "$ROOTFS/usr/lib/libexpat.so"* "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-			EXPAT_LIB_FOUND=true
-			info_msg "Copied libexpat.so from rootfs"
-		fi
-	fi
-	
-	# Warn if not found (but don't fail yet - let CMake try to find it)
-	if [ "$EXPAT_LIB_FOUND" = false ]; then
-		warning_msg "libexpat.so not found in packages or rootfs. Build may fail if libexpat1 package is not available."
-		warning_msg "Please create libexpat1 package by extracting from .deb file to packages/libexpat1/sources/"
+	if [ -z "$EXPAT_LIB_PATH" ]; then
+		error_msg "libexpat.so not found in libexpat1 build directory."
+		error_msg "Please build libexpat1 package first: build_package libexpat1:target"
+		error_msg "Expected location: $BUILD/libexpat1-*/build/lib/.libs/libexpat.so"
+		error_msg "Searched in: $EXPAT_BUILD_DIR"
+		return 1
 	fi
 
 	# Copy libcutils.so from aml-audio-utils build
@@ -400,7 +363,12 @@ EOF
 	# We'll use -U__USE_GNU to undefine it first, then let features.h define it properly
 	local CMAKE_C_FLAGS="-fPIC -I$STAGING_DIR/usr/include -include time.h -include stdint.h -U__USE_GNU"
 	local CMAKE_CXX_FLAGS="-fPIC -I$STAGING_DIR/usr/include -U__USE_GNU"
+	# Add libexpat build directory to library search path so linker can find libexpat.so
 	local CMAKE_LD_FLAGS="-L$STAGING_DIR/usr/lib"
+	if [ -n "$EXPAT_LIB_PATH" ]; then
+		CMAKE_LD_FLAGS="$CMAKE_LD_FLAGS -L$EXPAT_LIB_PATH"
+		info_msg "Added libexpat build path to linker flags: -L$EXPAT_LIB_PATH"
+	fi
 	
 	cmake "$PKG_BUILD_DIR" \
 		-DCMAKE_SYSTEM_NAME=Linux \
