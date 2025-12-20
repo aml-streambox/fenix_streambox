@@ -90,6 +90,7 @@ Priority: optional
 Description: Amlogic AV Sync Library
  ${PKG_SHORTDESC}
  Provides libamlavsync.so for audio/video synchronization.
+ Includes header files in /usr/include for development purposes.
 EOF
 
 	# Build the package using the Makefile in the source
@@ -164,12 +165,22 @@ EOF
 	install -m 644 "$OUT_DIR/libamlavsync.so" "${pkgdir}/usr/lib/"
 	${STRIP} "${pkgdir}/usr/lib/libamlavsync.so" 2>/dev/null || true
 
-	# Install headers
+	# Install headers from sources/src directory
+	local HEADER_SRC_DIR="$PKG_DIR/sources/src"
+	if [ -d "$HEADER_SRC_DIR" ]; then
+		# Install all header files from src directory
+		for header_file in "$HEADER_SRC_DIR"/*.h; do
+			if [ -f "$header_file" ]; then
+				install -m 644 "$header_file" "${pkgdir}/usr/include/" 2>/dev/null || true
+			fi
+		done
+	fi
+	# Also try from PKG_BUILD_DIR/src (if build copies them there)
 	if [ -f "$PKG_BUILD_DIR/src/aml_avsync.h" ]; then
-		install -m 644 "$PKG_BUILD_DIR/src/aml_avsync.h" "${pkgdir}/usr/include/"
+		install -m 644 "$PKG_BUILD_DIR/src/aml_avsync.h" "${pkgdir}/usr/include/" 2>/dev/null || true
 	fi
 	if [ -f "$PKG_BUILD_DIR/src/aml_avsync_log.h" ]; then
-		install -m 644 "$PKG_BUILD_DIR/src/aml_avsync_log.h" "${pkgdir}/usr/include/"
+		install -m 644 "$PKG_BUILD_DIR/src/aml_avsync_log.h" "${pkgdir}/usr/include/" 2>/dev/null || true
 	fi
 
 	info_msg "Building Debian package: $PKG_NAME"

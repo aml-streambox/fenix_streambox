@@ -33,6 +33,7 @@ Priority: optional
 Description: gRPC C++ development libraries and headers
  ${PKG_SHORTDESC}
  This package provides grpcpp/grpc++ development headers (grpcpp/server.h, etc.).
+ Includes header files in /usr/include/grpcpp and /usr/include/grpc++ for development purposes.
 EOF
 
 	# Copy from local sources directory

@@ -28,6 +28,7 @@ Description: Protocol Buffers C++ library (runtime)
  ${PKG_SHORTDESC}
  This package provides libprotoc.so.32 and libprotobuf.so.32 runtime libraries.
  Note: For host architecture (amd64) runtime libraries used during build.
+ Includes header files in /usr/include for development purposes.
 EOF
 
 	# Copy from local sources directory
@@ -59,6 +60,12 @@ EOF
 				cp -L "$lib" "$pkgdir/usr/lib/" 2>/dev/null || cp "$lib" "$pkgdir/usr/lib/" 2>/dev/null || true
 			fi
 		done
+	fi
+
+	# Copy development headers (if present in sources)
+	if [ -d "$PKG_DIR/sources/usr/include" ]; then
+		mkdir -p "$pkgdir/usr/include"
+		cp -r "$PKG_DIR/sources/usr/include/"* "$pkgdir/usr/include/" 2>/dev/null || true
 	fi
 
 	info_msg "Building Debian package: $PKG_NAME"

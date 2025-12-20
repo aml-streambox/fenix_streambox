@@ -88,6 +88,8 @@ Priority: optional
 Description: Amlogic Audio Utils Library
  ${PKG_SHORTDESC}
  Provides libamaudioutils.so, libcutils.so, and IPC Buffer headers.
+ Includes header files in /usr/include/audio_utils, /usr/include/IpcBuffer,
+ and /usr/include/cutils for development purposes.
 EOF
 
 	# Build the package using the Makefile in the source
@@ -275,15 +277,34 @@ EOF
 		${STRIP} "${pkgdir}/usr/lib/libcutils.so" 2>/dev/null || true
 	fi
 
-	# Install headers
-	if [ -d "$PKG_BUILD_DIR/include/audio_utils" ]; then
-		mkdir -p "${pkgdir}/usr/include/audio_utils"
-		cp -r "$PKG_BUILD_DIR/include/audio_utils"/* "${pkgdir}/usr/include/audio_utils/" 2>/dev/null || true
-	fi
+	# Install headers from sources/include directory
+	local HEADER_SRC_DIR="$PKG_DIR/sources/include"
+	if [ -d "$HEADER_SRC_DIR" ]; then
+		# Install audio_utils headers
+		if [ -d "$HEADER_SRC_DIR/audio_utils" ]; then
+			mkdir -p "${pkgdir}/usr/include/audio_utils"
+			cp -r "$HEADER_SRC_DIR/audio_utils"/* "${pkgdir}/usr/include/audio_utils/" 2>/dev/null || true
+		fi
+		# Also try from PKG_BUILD_DIR/include (if Makefile copies them there)
+		if [ -d "$PKG_BUILD_DIR/include/audio_utils" ]; then
+			mkdir -p "${pkgdir}/usr/include/audio_utils"
+			cp -r "$PKG_BUILD_DIR/include/audio_utils"/* "${pkgdir}/usr/include/audio_utils/" 2>/dev/null || true
+		fi
 
-	if [ -d "$PKG_BUILD_DIR/include/IpcBuffer" ]; then
-		mkdir -p "${pkgdir}/usr/include/IpcBuffer"
-		cp -r "$PKG_BUILD_DIR/include/IpcBuffer"/* "${pkgdir}/usr/include/IpcBuffer/" 2>/dev/null || true
+		# Install IpcBuffer headers (EXCLUSIVE to aml-audio-utils)
+		if [ -d "$HEADER_SRC_DIR/IpcBuffer" ]; then
+			mkdir -p "${pkgdir}/usr/include/IpcBuffer"
+			cp -r "$HEADER_SRC_DIR/IpcBuffer"/* "${pkgdir}/usr/include/IpcBuffer/" 2>/dev/null || true
+		fi
+		# Also try from PKG_BUILD_DIR/include (if Makefile copies them there)
+		if [ -d "$PKG_BUILD_DIR/include/IpcBuffer" ]; then
+			mkdir -p "${pkgdir}/usr/include/IpcBuffer"
+			cp -r "$PKG_BUILD_DIR/include/IpcBuffer"/* "${pkgdir}/usr/include/IpcBuffer/" 2>/dev/null || true
+		fi
+
+		# Do NOT install cutils headers (provided by android-liblog)
+		# Do NOT install speex, utils, private headers (internal build headers, not for installation)
+		# Do NOT install resampler.h (internal header)
 	fi
 
 	info_msg "Building Debian package: ${PKG_NAME}"

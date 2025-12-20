@@ -270,23 +270,50 @@ EOF
 	
 	# Find and set up grpc_cpp_plugin
 	local GRPC_PLUGIN_FOUND=false
-	# Check libgrpc-dev package
-	local GRPC_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libgrpc-dev" -name "*.deb" 2>/dev/null | head -1)
-	if [ -n "$GRPC_DEB" ] && [ -f "$GRPC_DEB" ]; then
-		local GRPC_EXTRACT_DIR="$PKG_BUILD_DIR/staging_grpc"
-		mkdir -p "$GRPC_EXTRACT_DIR"
-		if dpkg-deb -x "$GRPC_DEB" "$GRPC_EXTRACT_DIR" 2>/dev/null; then
-			if [ -f "$GRPC_EXTRACT_DIR/usr/bin/grpc_cpp_plugin" ]; then
-				cp "$GRPC_EXTRACT_DIR/usr/bin/grpc_cpp_plugin" "$HOST_DIR/bin/" 2>/dev/null || true
-				chmod 755 "$HOST_DIR/bin/grpc_cpp_plugin" 2>/dev/null || true
-				GRPC_PLUGIN_FOUND=true
-				info_msg "Found grpc_cpp_plugin in libgrpc-dev package"
+	# First check for system-provided binary (from protobuf-compiler-grpc package)
+	if command -v grpc_cpp_plugin >/dev/null 2>&1; then
+		local SYSTEM_PLUGIN=$(command -v grpc_cpp_plugin)
+		cp "$SYSTEM_PLUGIN" "$HOST_DIR/bin/grpc_cpp_plugin" 2>/dev/null || true
+		chmod 755 "$HOST_DIR/bin/grpc_cpp_plugin" 2>/dev/null || true
+		GRPC_PLUGIN_FOUND=true
+		info_msg "Found grpc_cpp_plugin in system (protobuf-compiler-grpc package)"
+	fi
+	
+	if [ "$GRPC_PLUGIN_FOUND" = false ]; then
+		# Try to automatically install protobuf-compiler-grpc if not found
+		info_msg "grpc_cpp_plugin not found, attempting to install protobuf-compiler-grpc..."
+		if command -v sudo >/dev/null 2>&1; then
+			if sudo apt-get update >/dev/null 2>&1 && sudo apt-get install -y --no-install-recommends protobuf-compiler-grpc >/dev/null 2>&1; then
+				if command -v grpc_cpp_plugin >/dev/null 2>&1; then
+					local SYSTEM_PLUGIN=$(command -v grpc_cpp_plugin)
+					cp "$SYSTEM_PLUGIN" "$HOST_DIR/bin/grpc_cpp_plugin" 2>/dev/null || true
+					chmod 755 "$HOST_DIR/bin/grpc_cpp_plugin" 2>/dev/null || true
+					GRPC_PLUGIN_FOUND=true
+					info_msg "Successfully installed and found grpc_cpp_plugin from protobuf-compiler-grpc package"
+				fi
 			fi
 		fi
 	fi
 	
 	if [ "$GRPC_PLUGIN_FOUND" = false ]; then
-		# Check PKGS_DIR
+		# Check libgrpc-dev package
+		local GRPC_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/libgrpc-dev" -name "*.deb" 2>/dev/null | head -1)
+		if [ -n "$GRPC_DEB" ] && [ -f "$GRPC_DEB" ]; then
+			local GRPC_EXTRACT_DIR="$PKG_BUILD_DIR/staging_grpc"
+			mkdir -p "$GRPC_EXTRACT_DIR"
+			if dpkg-deb -x "$GRPC_DEB" "$GRPC_EXTRACT_DIR" 2>/dev/null; then
+				if [ -f "$GRPC_EXTRACT_DIR/usr/bin/grpc_cpp_plugin" ]; then
+					cp "$GRPC_EXTRACT_DIR/usr/bin/grpc_cpp_plugin" "$HOST_DIR/bin/" 2>/dev/null || true
+					chmod 755 "$HOST_DIR/bin/grpc_cpp_plugin" 2>/dev/null || true
+					GRPC_PLUGIN_FOUND=true
+					info_msg "Found grpc_cpp_plugin in libgrpc-dev package"
+				fi
+			fi
+		fi
+	fi
+	
+	if [ "$GRPC_PLUGIN_FOUND" = false ]; then
+		# Check PKGS_DIR (fallback for legacy support)
 		local PKG_DIR="$PKGS_DIR/libgrpc-dev"
 		if [ -f "$PKG_DIR/sources/usr/bin/grpc_cpp_plugin" ]; then
 			cp "$PKG_DIR/sources/usr/bin/grpc_cpp_plugin" "$HOST_DIR/bin/" 2>/dev/null || true
@@ -297,7 +324,7 @@ EOF
 	fi
 	
 	if [ "$GRPC_PLUGIN_FOUND" = false ]; then
-		error_msg "grpc_cpp_plugin not found. Please ensure libgrpc-dev package is built and grpc_cpp_plugin is in packages/libgrpc-dev/sources/usr/bin/"
+		error_msg "grpc_cpp_plugin not found. Please ensure protobuf-compiler-grpc is installed or libgrpc-dev package is built."
 		return 1
 	fi
 	
@@ -565,6 +592,14 @@ EOF
 		error_msg "Install failed"
 		return 1
 	}
+	
+	# Remove headers from package (they're only for build-time, not runtime)
+	# Headers should be provided by dependency packages (aml-audio-hal, etc.)
+	if [ -d "$pkgdir/usr/include" ]; then
+		find "$pkgdir/usr/include" -type f -delete 2>/dev/null || true
+		find "$pkgdir/usr/include" -type d -empty -delete 2>/dev/null || true
+		info_msg "Removed headers from package (provided by dependencies)"
+	fi
 	
 	# Install systemd service file
 	if [ -f "$PKGS_DIR/$PKG_NAME/files/audioserver.service" ]; then

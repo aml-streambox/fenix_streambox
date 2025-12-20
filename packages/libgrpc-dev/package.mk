@@ -28,22 +28,26 @@ Description: gRPC development libraries and plugins
  ${PKG_SHORTDESC}
  This package provides grpc_cpp_plugin and development headers.
  Note: Plugins are architecture-independent, using amd64 version.
+ Includes header files in /usr/include/grpc and /usr/include/grpc++ for development purposes.
 EOF
 
 	# Copy from local sources directory
 	local PKG_DIR="$PKGS_DIR/$PKG_NAME"
-	if [ ! -d "$PKG_DIR/sources/usr" ]; then
+	# Check if we have at least headers or other files (grpc_cpp_plugin is now optional)
+	if [ ! -d "$PKG_DIR/sources/usr" ] && [ ! -d "$PKG_DIR/sources/usr/include" ]; then
 		error_msg "Local sources not found at $PKG_DIR/sources/usr"
 		error_msg "Please ensure libgrpc-dev files are extracted to packages/libgrpc-dev/sources/usr/"
+		error_msg "Note: grpc_cpp_plugin is now provided by protobuf-compiler-grpc package"
 		return 1
 	fi
 
 	info_msg "Copying libgrpc-dev from local sources..."
 	
-	# Copy grpc plugins and binaries
+	# Copy grpc plugins and binaries (optional - prefer system protobuf-compiler-grpc)
+	# Note: grpc_cpp_plugin is now provided by protobuf-compiler-grpc package
 	if [ -d "$PKG_DIR/sources/usr/bin" ]; then
 		mkdir -p "$pkgdir/usr/bin"
-		find "$PKG_DIR/sources/usr/bin" -type f -name "*grpc*" -exec cp {} "$pkgdir/usr/bin/" \; 2>/dev/null || true
+		find "$PKG_DIR/sources/usr/bin" -type f -name "*grpc*" ! -name "grpc_cpp_plugin" -exec cp {} "$pkgdir/usr/bin/" \; 2>/dev/null || true
 		find "$pkgdir/usr/bin" -type f -exec chmod 755 {} \; 2>/dev/null || true
 	fi
 	

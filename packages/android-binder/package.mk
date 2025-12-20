@@ -60,8 +60,6 @@ make_target() {
 	mkdir -p $pkgdir/DEBIAN
 	mkdir -p $pkgdir/usr/lib
 	mkdir -p $pkgdir/usr/bin
-	mkdir -p $pkgdir/usr/include/binder
-	mkdir -p $pkgdir/usr/include/utils
 	mkdir -p $pkgdir/lib/systemd/system
 	mkdir -p $pkgdir/etc/init.d
 
@@ -78,6 +76,7 @@ Description: Android Binder IPC Framework
  ${PKG_SHORTDESC}
  Amlogic version with Makefile build system.
  Provides libbinder.so, servicemanager, and systemd services.
+ Note: Headers are not installed to avoid conflicts with system packages.
 EOF
 
 	# Build the package using the Makefile in the source
@@ -103,8 +102,6 @@ EOF
 	# Create staging directory
 	mkdir -p "$STAGING_DIR/usr/lib"
 	mkdir -p "$STAGING_DIR/usr/bin"
-	mkdir -p "$STAGING_DIR/usr/include/binder"
-	mkdir -p "$STAGING_DIR/usr/include/utils"
 
 	# Create output directories for object files (required by Makefile)
 	mkdir -p "$OUT_DIR/binder" "$OUT_DIR/utils" "$OUT_DIR/cutils" "$OUT_DIR/servicemgr"
@@ -154,13 +151,8 @@ EOF
 		return 1
 	fi
 
-	# Install headers
-	if [ -d "$PKG_BUILD_DIR/include/binder" ]; then
-		install -m 644 "$PKG_BUILD_DIR/include/binder"/* "${pkgdir}/usr/include/binder/" 2>/dev/null || true
-	fi
-	if [ -d "$PKG_BUILD_DIR/include/utils" ]; then
-		install -m 644 "$PKG_BUILD_DIR/include/utils"/* "${pkgdir}/usr/include/utils/" 2>/dev/null || true
-	fi
+	# Headers are not installed to avoid conflicts with system packages (linux-libc-dev)
+	# If headers are needed, they should be provided by a separate -dev package
 
 	# Install systemd service files
 	if [ -f "$PKG_DIR/files/binder.service" ]; then

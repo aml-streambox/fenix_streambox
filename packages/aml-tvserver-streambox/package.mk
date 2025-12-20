@@ -59,7 +59,7 @@ detect_cross_compiler() {
 }
 
 PKG_NAME="aml-tvserver-streambox"
-PKG_VERSION="47b7823c2af14338e873c5ceb8fd2a9c4f277af2"
+PKG_VERSION="6ce5bf4d60c9d49ce0d12c833f550c25bd323c8a"
 PKG_SHA256=""
 PKG_SOURCE_DIR="aml_tvserver_streambox-${PKG_VERSION}*"
 PKG_SITE="https://github.com/anshi233/aml_tvserver_streambox"
