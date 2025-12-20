@@ -112,12 +112,71 @@ EOF
 	# Apply Debian patches if they exist
 	if [ -d "$PKG_DIR/sources/debian/patches" ]; then
 		info_msg "Applying Debian patches..."
-		for patch in "$PKG_DIR/sources/debian/patches"/*.patch; do
-			if [ -f "$patch" ]; then
-				info_msg "Applying patch: $(basename $patch)"
-				patch -p1 < "$patch" || warning_msg "Patch $(basename $patch) may have failed"
-			fi
-		done
+		# Read patch series file if it exists to apply patches in order
+		local PATCH_SERIES="$PKG_DIR/sources/debian/patches/series"
+		if [ -f "$PATCH_SERIES" ]; then
+			# Apply patches in order from series file
+			while IFS= read -r patch_name || [ -n "$patch_name" ]; do
+				# Skip empty lines and comments
+				[ -z "$patch_name" ] && continue
+				[ "${patch_name#\#}" != "$patch_name" ] && continue
+				
+				local patch="$PKG_DIR/sources/debian/patches/$patch_name"
+				if [ -f "$patch" ]; then
+					info_msg "Applying patch: $patch_name"
+					# Try different patch strip levels
+					# Patches reference "expat-2.6.1/expat/lib/xmlparse.c" but files are at "lib/xmlparse.c"
+					# So we need -p2 to strip "expat-2.6.1/expat/" or -p1 to strip "expat/"
+					local PATCH_SUCCESS=false
+					if patch -p2 < "$patch" 2>/dev/null; then
+						PATCH_SUCCESS=true
+					elif patch -p1 < "$patch" 2>/dev/null; then
+						PATCH_SUCCESS=true
+					elif patch -p3 < "$patch" 2>/dev/null; then
+						PATCH_SUCCESS=true
+					fi
+					
+					if [ "$PATCH_SUCCESS" = false ]; then
+						warning_msg "Patch $patch_name failed with -p1, -p2, and -p3"
+						# Try to apply with fuzz as last resort
+						if ! patch -p2 --fuzz=3 < "$patch" 2>/dev/null; then
+							if ! patch -p1 --fuzz=3 < "$patch" 2>/dev/null; then
+								error_msg "Patch $patch_name failed to apply. Please check patch paths."
+								return 1
+							fi
+						fi
+					fi
+				fi
+			done < "$PATCH_SERIES"
+		else
+			# Fallback: apply all patches in alphabetical order
+			for patch in "$PKG_DIR/sources/debian/patches"/*.patch; do
+				if [ -f "$patch" ] && [ "$(basename "$patch")" != "series" ]; then
+					info_msg "Applying patch: $(basename $patch)"
+					# Try different patch strip levels
+					# Patches reference "expat-2.6.1/expat/lib/xmlparse.c" but files are at "lib/xmlparse.c"
+					local PATCH_SUCCESS=false
+					if patch -p2 < "$patch" 2>/dev/null; then
+						PATCH_SUCCESS=true
+					elif patch -p1 < "$patch" 2>/dev/null; then
+						PATCH_SUCCESS=true
+					elif patch -p3 < "$patch" 2>/dev/null; then
+						PATCH_SUCCESS=true
+					fi
+					
+					if [ "$PATCH_SUCCESS" = false ]; then
+						warning_msg "Patch $(basename $patch) failed with -p1, -p2, and -p3"
+						# Try to apply with fuzz as last resort
+						if ! patch -p2 --fuzz=3 < "$patch" 2>/dev/null; then
+							if ! patch -p1 --fuzz=3 < "$patch" 2>/dev/null; then
+								error_msg "Patch $(basename $patch) failed to apply. Please check patch paths."
+								return 1
+							fi
+						fi
+					fi
+				fi
+			done
+		fi
 	fi
 	
 	# Detect and verify cross-compiler
