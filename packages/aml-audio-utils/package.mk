@@ -225,35 +225,14 @@ EOF
 		sed -i "s|CFLAGS+=-I${STAGING_DIR}/usr/include |CFLAGS+=-I${STAGING_DIR}/usr/include $BOOST_INCLUDE |" "$PKG_BUILD_DIR/Makefile"
 	fi
 	
-	# Add library path for android-binder's liblog.so (liblog is a separate package)
-	# Check if android-liblog was built and add its library path
-	local LIBLOG_BUILD_DIR="$BUILD/android-liblog-amlogic-yocto-1.0"
-	local LIB_PATHS=""
-	if [ -f "$LIBLOG_BUILD_DIR/liblog.so" ]; then
-		LIB_PATHS="-L$LIBLOG_BUILD_DIR"
-		info_msg "Found liblog.so from android-liblog package"
-	elif [ -f "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/android-liblog"/*.deb ]; then
-		# Extract liblog.so from built .deb if available
-		local LIBLOG_DEB=$(find "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/android-liblog" -name "*.deb" 2>/dev/null | head -1)
-		if [ -n "$LIBLOG_DEB" ] && [ -f "$LIBLOG_DEB" ]; then
-			local LIBLOG_EXTRACT_DIR="$BUILD/staging/android-liblog"
-			mkdir -p "$LIBLOG_EXTRACT_DIR"
-			dpkg-deb -x "$LIBLOG_DEB" "$LIBLOG_EXTRACT_DIR" 2>/dev/null
-			if [ -f "$LIBLOG_EXTRACT_DIR/usr/lib/liblog.so" ]; then
-				LIB_PATHS="-L$LIBLOG_EXTRACT_DIR/usr/lib"
-				info_msg "Extracted liblog.so from android-liblog package"
-			fi
-		fi
-	else
-		error_msg "liblog.so not found. Please build android-liblog package first."
-		error_msg "Expected location: $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/android-liblog/"
-		return 1
-	fi
-	
-	# Update Makefile LDFLAGS to include library paths
-	if [ -n "$LIB_PATHS" ]; then
-		sed -i "s|LDFLAGS+=-llog|LDFLAGS+=$LIB_PATHS -llog|" "$PKG_BUILD_DIR/Makefile"
-	fi
+	# Note: The Makefile has -llog in LDFLAGS, but the actual source files being compiled
+	# (primitives.c, resampler.c, IpcBuffer.cpp, cutils files) don't use liblog functions.
+	# Only logcat.cpp uses liblog, but it's not in the build list.
+	# So liblog is not actually needed at build time, only at runtime.
+	# We'll remove -llog from LDFLAGS to avoid unnecessary build dependency.
+	info_msg "Removing -llog from LDFLAGS (not needed for build, only runtime dependency)"
+	sed -i "s|LDFLAGS+=-llog -ldl|LDFLAGS+=-ldl|" "$PKG_BUILD_DIR/Makefile" || true
+	sed -i "s|LDFLAGS+=-llog|LDFLAGS+=|" "$PKG_BUILD_DIR/Makefile" || true
 	
 	# Build (Makefile now has CC/CXX set and all correct include paths and library paths)
 	# Also pass CC/CXX on command line as backup (Make will use command line over Makefile)
