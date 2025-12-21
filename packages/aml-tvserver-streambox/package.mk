@@ -182,9 +182,17 @@ EOF
 		info_msg "Copied binder headers from android-binder sources"
 	fi
 	# Also check build directory
-	local BINDER_BUILD="$BUILD/android-binder-amlogic-yocto-1.0"
+	# android-binder version format is "1.0-amlogic-yocto"
+	local BINDER_BUILD="$BUILD/android-binder-1.0-amlogic-yocto"
+	if [ ! -d "$BINDER_BUILD" ]; then
+		BINDER_BUILD="$BUILD/android-binder-amlogic-yocto-1.0"
+	fi
 	if [ ! -d "$BINDER_BUILD" ]; then
 		BINDER_BUILD="$BUILD/android-binder-${PKG_VERSION}"
+	fi
+	if [ ! -d "$BINDER_BUILD" ]; then
+		# Try to find any android-binder build directory
+		BINDER_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "android-binder-*" 2>/dev/null | head -1)
 	fi
 	if [ -d "$BINDER_BUILD/include/binder" ]; then
 		cp -r "$BINDER_BUILD/include/binder"/* "$STAGING_DIR/usr/include/binder/" 2>/dev/null || true
@@ -219,6 +227,28 @@ EOF
 		info_msg "Copied cutils headers from android-binder build directory"
 	fi
 	
+	# Define LIBLOG_BUILD early for use in android headers copy
+	local LIBLOG_BUILD="$BUILD/android-liblog-1.0-amlogic-yocto"
+	if [ ! -d "$LIBLOG_BUILD" ]; then
+		LIBLOG_BUILD="$BUILD/android-liblog-amlogic-yocto-1.0"
+	fi
+	if [ ! -d "$LIBLOG_BUILD" ]; then
+		LIBLOG_BUILD="$BUILD/android-liblog-${PKG_VERSION}"
+	fi
+	
+	# Copy android headers (needed for android/log.h)
+	mkdir -p "$STAGING_DIR/usr/include/android"
+	local ANDROID_SRC="$PKGS_DIR/android-liblog/sources/include/android"
+	if [ -d "$ANDROID_SRC" ]; then
+		cp -r "$ANDROID_SRC"/* "$STAGING_DIR/usr/include/android/" 2>/dev/null || true
+		info_msg "Copied android headers from android-liblog sources"
+	fi
+	# Also check android-liblog build directory
+	if [ -d "$LIBLOG_BUILD/include/android" ]; then
+		cp -r "$LIBLOG_BUILD/include/android"/* "$STAGING_DIR/usr/include/android/" 2>/dev/null || true
+		info_msg "Copied android headers from android-liblog build directory"
+	fi
+	
 	# Copy kernel headers (needed for linux/amlogic/tvin.h)
 	# Note: Kernel headers are in include/uapi/amlogic/ not include/uapi/linux/amlogic/
 	local KERNEL_TVIN_H=""
@@ -248,9 +278,17 @@ EOF
 		cp -r "$AUDIO_HAL_SRC/system"/* "$STAGING_DIR/usr/include/system/" 2>/dev/null || true
 		info_msg "Copied system headers from aml-audio-hal sources"
 	fi
-	local AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-amlogic-yocto-1.0"
+	# Version format is "1.0-amlogic-yocto"
+	local AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-1.0-amlogic-yocto"
+	if [ ! -d "$AUDIO_HAL_BUILD" ]; then
+		AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-amlogic-yocto-1.0"
+	fi
 	if [ ! -d "$AUDIO_HAL_BUILD" ]; then
 		AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-${PKG_VERSION}"
+	fi
+	if [ ! -d "$AUDIO_HAL_BUILD" ]; then
+		# Try to find any aml-audio-hal build directory
+		AUDIO_HAL_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "aml-audio-hal-*" 2>/dev/null | head -1)
 	fi
 	if [ -d "$AUDIO_HAL_BUILD/include/hardware" ]; then
 		cp -r "$AUDIO_HAL_BUILD/include/hardware"/* "$STAGING_DIR/usr/include/hardware/" 2>/dev/null || true
@@ -296,46 +334,74 @@ EOF
 	
 	# Get dependency libraries for linking
 	# android-binder (libbinder.so, liblog.so)
-	if [ -f "$BINDER_BUILD/libbinder.so" ]; then
-		cp "$BINDER_BUILD/libbinder.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+	if [ -n "$BINDER_BUILD" ] && [ -d "$BINDER_BUILD" ]; then
+		if [ -f "$BINDER_BUILD/libbinder.so" ]; then
+			cp "$BINDER_BUILD/libbinder.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+			info_msg "Copied libbinder.so from android-binder build"
+		else
+			warning_msg "libbinder.so not found in $BINDER_BUILD"
+			warning_msg "Please ensure android-binder package is built before aml-tvserver-streambox"
+		fi
+	else
+		warning_msg "android-binder build directory not found"
+		warning_msg "Please ensure android-binder package is built before aml-tvserver-streambox"
 	fi
 	
 	# android-liblog (liblog.so)
-	local LIBLOG_BUILD="$BUILD/android-liblog-amlogic-yocto-1.0"
-	if [ ! -d "$LIBLOG_BUILD" ]; then
-		LIBLOG_BUILD="$BUILD/android-liblog-${PKG_VERSION}"
-	fi
-	if [ -f "$LIBLOG_BUILD/liblog.so" ]; then
-		cp "$LIBLOG_BUILD/liblog.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-	elif [ -f "$LIBLOG_BUILD/liblog.so.1.0.0" ]; then
-		cp "$LIBLOG_BUILD/liblog.so.1.0.0" "$STAGING_DIR/usr/lib/liblog.so" 2>/dev/null || true
+	# LIBLOG_BUILD is already defined earlier for header copying
+	if [ -n "$LIBLOG_BUILD" ] && [ -d "$LIBLOG_BUILD" ]; then
+		if [ -f "$LIBLOG_BUILD/liblog.so" ]; then
+			cp "$LIBLOG_BUILD/liblog.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+			info_msg "Copied liblog.so from android-liblog build"
+		elif [ -f "$LIBLOG_BUILD/liblog.so.1.0.0" ]; then
+			cp "$LIBLOG_BUILD/liblog.so.1.0.0" "$STAGING_DIR/usr/lib/liblog.so" 2>/dev/null || true
+			info_msg "Copied liblog.so from android-liblog build (from versioned library)"
+		fi
+	else
+		warning_msg "android-liblog build directory not found"
+		warning_msg "Please ensure android-liblog package is built before aml-tvserver-streambox"
 	fi
 	
 	# aml-audio-service (libaudio_client.so)
-	local AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-amlogic-yocto-1.0"
+	# Version format is "1.0-amlogic-yocto"
+	local AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-1.0-amlogic-yocto"
+	if [ ! -d "$AUDIO_SERVICE_BUILD" ]; then
+		AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-amlogic-yocto-1.0"
+	fi
 	if [ ! -d "$AUDIO_SERVICE_BUILD" ]; then
 		AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-${PKG_VERSION}"
 	fi
-	if [ -f "$AUDIO_SERVICE_BUILD/libaudio_client.so" ]; then
+	if [ ! -d "$AUDIO_SERVICE_BUILD" ]; then
+		# Try to find any aml-audio-service build directory
+		AUDIO_SERVICE_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "aml-audio-service-*" 2>/dev/null | head -1)
+	fi
+	if [ -n "$AUDIO_SERVICE_BUILD" ] && [ -d "$AUDIO_SERVICE_BUILD" ] && [ -f "$AUDIO_SERVICE_BUILD/libaudio_client.so" ]; then
 		cp "$AUDIO_SERVICE_BUILD/libaudio_client.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+		info_msg "Copied libaudio_client.so from aml-audio-service build"
+	else
+		warning_msg "libaudio_client.so not found in aml-audio-service build directory"
+		warning_msg "Please ensure aml-audio-service package is built before aml-tvserver-streambox"
 	fi
 	
 	# aml-audio-utils (libamaudioutils.so - needed by libaudio_client.so)
-	local AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-amlogic-yocto-1.0"
+	# Version format is "1.0-amlogic-yocto"
+	local AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-1.0-amlogic-yocto"
+	if [ ! -d "$AUDIO_UTILS_BUILD" ]; then
+		AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-amlogic-yocto-1.0"
+	fi
 	if [ ! -d "$AUDIO_UTILS_BUILD" ]; then
 		AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-${PKG_VERSION}"
+	fi
+	if [ ! -d "$AUDIO_UTILS_BUILD" ]; then
+		# Try to find any aml-audio-utils build directory
+		AUDIO_UTILS_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "aml-audio-utils-*" 2>/dev/null | head -1)
 	fi
 	if [ -f "$AUDIO_UTILS_BUILD/libamaudioutils.so" ]; then
 		cp "$AUDIO_UTILS_BUILD/libamaudioutils.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
 		info_msg "Copied libamaudioutils.so from aml-audio-utils build"
 	fi
 	
-	# libubootenv.so (needed for bootenv functions)
-	local UBOOTENV_LIB="$PKGS_DIR/aml-ubootenv-dev/sources/lib/libubootenv.so"
-	if [ -f "$UBOOTENV_LIB" ]; then
-		cp "$UBOOTENV_LIB" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-		info_msg "Copied libubootenv.so from ported package"
-	fi
+	# libubootenv.so is not needed - DISABLE_UBOOTENV is defined in Makefile
 	
 	# Patch Makefile to set CC and CXX (similar to aml-audio-utils)
 	# Escape special characters in CC/CXX for sed
@@ -383,10 +449,11 @@ EOF
 		fi
 	fi
 	
-	# Add -lubootenv and -lamaudioutils to LDLIBS if libraries exist
+	# Add -lamaudioutils to LDLIBS if library exists
 	# The Makefile uses $(LDLIBS) variable in the link commands
 	# Check if LDLIBS is defined, if not, add it after LDFLAGS definitions
-	if [ -f "$STAGING_DIR/usr/lib/libubootenv.so" ] || [ -f "$STAGING_DIR/usr/lib/libamaudioutils.so" ]; then
+	# Note: -lubootenv is not needed - DISABLE_UBOOTENV is defined in Makefile
+	if [ -f "$STAGING_DIR/usr/lib/libamaudioutils.so" ]; then
 		if ! grep -q "^LDLIBS" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
 			# Add LDLIBS definition after LDFLAGS
 			local LDFLAGS_LINE=$(grep -n "^LDFLAGS" "$PKG_BUILD_DIR/Makefile" 2>/dev/null | tail -1 | cut -d: -f1)
@@ -400,18 +467,7 @@ EOF
 			fi
 		fi
 		
-		# Add libraries to LDLIBS
-		if [ -f "$STAGING_DIR/usr/lib/libubootenv.so" ] && ! grep -q "\-lubootenv" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
-			# Add to existing LDLIBS line or create new one
-			if grep -q "^LDLIBS[[:space:]]*+=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
-				sed -i "/^LDLIBS[[:space:]]*+=/a LDLIBS += -lubootenv" "$PKG_BUILD_DIR/Makefile"
-			elif grep -q "^LDLIBS[[:space:]]*:=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
-				sed -i "s|^LDLIBS[[:space:]]*:=.*|& -lubootenv|" "$PKG_BUILD_DIR/Makefile"
-			else
-				echo "LDLIBS += -lubootenv" >> "$PKG_BUILD_DIR/Makefile"
-			fi
-			info_msg "Added -lubootenv to LDLIBS"
-		fi
+		# Add library to LDLIBS
 		if [ -f "$STAGING_DIR/usr/lib/libamaudioutils.so" ] && ! grep -q "\-lamaudioutils" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
 			if grep -q "^LDLIBS[[:space:]]*+=" "$PKG_BUILD_DIR/Makefile" 2>/dev/null; then
 				sed -i "/^LDLIBS[[:space:]]*+=/a LDLIBS += -lamaudioutils" "$PKG_BUILD_DIR/Makefile"
@@ -453,6 +509,7 @@ EOF
 	mkdir -p "$STAGING_DIR/usr/include/binder"
 	mkdir -p "$STAGING_DIR/usr/include/utils"
 	mkdir -p "$STAGING_DIR/usr/include/cutils"
+	mkdir -p "$STAGING_DIR/usr/include/android"
 	mkdir -p "$STAGING_DIR/usr/include/linux/amlogic"
 	mkdir -p "$STAGING_DIR/usr/include/hardware"
 	mkdir -p "$STAGING_DIR/usr/include/system"
@@ -491,15 +548,33 @@ EOF
 	if [ -d "$BINDER_BUILD/include/cutils" ]; then
 		cp -r "$BINDER_BUILD/include/cutils"/* "$STAGING_DIR/usr/include/cutils/" 2>/dev/null || true
 	fi
+	# Re-copy android headers after clean
+	local ANDROID_SRC="$PKGS_DIR/android-liblog/sources/include/android"
+	if [ -d "$ANDROID_SRC" ]; then
+		cp -r "$ANDROID_SRC"/* "$STAGING_DIR/usr/include/android/" 2>/dev/null || true
+		info_msg "Re-copied android headers from android-liblog sources"
+	fi
+	if [ -d "$LIBLOG_BUILD/include/android" ]; then
+		cp -r "$LIBLOG_BUILD/include/android"/* "$STAGING_DIR/usr/include/android/" 2>/dev/null || true
+		info_msg "Re-copied android headers from android-liblog build directory"
+	fi
 	if [ -n "$KERNEL_AMLOGIC_DIR" ] && [ -d "$KERNEL_AMLOGIC_DIR" ]; then
 		mkdir -p "$STAGING_DIR/usr/include/linux/amlogic"
 		cp "$KERNEL_AMLOGIC_DIR"/*.h "$STAGING_DIR/usr/include/linux/amlogic/" 2>/dev/null || true
 	fi
 	# Re-copy hardware and system headers after clean
 	local AUDIO_HAL_SRC="$PKGS_DIR/aml-audio-hal/sources/include"
-	local AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-amlogic-yocto-1.0"
+	# Version format is "1.0-amlogic-yocto"
+	local AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-1.0-amlogic-yocto"
+	if [ ! -d "$AUDIO_HAL_BUILD" ]; then
+		AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-amlogic-yocto-1.0"
+	fi
 	if [ ! -d "$AUDIO_HAL_BUILD" ]; then
 		AUDIO_HAL_BUILD="$BUILD/aml-audio-hal-${PKG_VERSION}"
+	fi
+	if [ ! -d "$AUDIO_HAL_BUILD" ]; then
+		# Try to find any aml-audio-hal build directory
+		AUDIO_HAL_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "aml-audio-hal-*" 2>/dev/null | head -1)
 	fi
 	if [ -d "$AUDIO_HAL_SRC/hardware" ]; then
 		cp -r "$AUDIO_HAL_SRC/hardware"/* "$STAGING_DIR/usr/include/hardware/" 2>/dev/null || true
@@ -544,32 +619,64 @@ EOF
 	fi
 	
 	# Re-copy libraries
-	if [ -f "$BINDER_BUILD/libbinder.so" ]; then
+	if [ -n "$BINDER_BUILD" ] && [ -d "$BINDER_BUILD" ] && [ -f "$BINDER_BUILD/libbinder.so" ]; then
 		cp "$BINDER_BUILD/libbinder.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+		info_msg "Re-copied libbinder.so"
 	fi
-	if [ -f "$LIBLOG_BUILD/liblog.so" ]; then
-		cp "$LIBLOG_BUILD/liblog.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-	elif [ -f "$LIBLOG_BUILD/liblog.so.1.0.0" ]; then
-		cp "$LIBLOG_BUILD/liblog.so.1.0.0" "$STAGING_DIR/usr/lib/liblog.so" 2>/dev/null || true
+	# Re-copy liblog.so after clean
+	# Re-define LIBLOG_BUILD to ensure correct version format
+	if [ -z "$LIBLOG_BUILD" ] || [ ! -d "$LIBLOG_BUILD" ]; then
+		LIBLOG_BUILD="$BUILD/android-liblog-1.0-amlogic-yocto"
+		if [ ! -d "$LIBLOG_BUILD" ]; then
+			LIBLOG_BUILD="$BUILD/android-liblog-amlogic-yocto-1.0"
+		fi
+		if [ ! -d "$LIBLOG_BUILD" ]; then
+			LIBLOG_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "android-liblog-*" 2>/dev/null | head -1)
+		fi
 	fi
-	if [ -f "$AUDIO_SERVICE_BUILD/libaudio_client.so" ]; then
+	if [ -n "$LIBLOG_BUILD" ] && [ -d "$LIBLOG_BUILD" ]; then
+		if [ -f "$LIBLOG_BUILD/liblog.so" ]; then
+			cp "$LIBLOG_BUILD/liblog.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+			info_msg "Re-copied liblog.so"
+		elif [ -f "$LIBLOG_BUILD/liblog.so.1.0.0" ]; then
+			cp "$LIBLOG_BUILD/liblog.so.1.0.0" "$STAGING_DIR/usr/lib/liblog.so" 2>/dev/null || true
+			info_msg "Re-copied liblog.so (from versioned library)"
+		fi
+	fi
+	# Re-copy libaudio_client.so after clean
+	# Version format is "1.0-amlogic-yocto"
+	local AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-1.0-amlogic-yocto"
+	if [ ! -d "$AUDIO_SERVICE_BUILD" ]; then
+		AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-amlogic-yocto-1.0"
+	fi
+	if [ ! -d "$AUDIO_SERVICE_BUILD" ]; then
+		AUDIO_SERVICE_BUILD="$BUILD/aml-audio-service-${PKG_VERSION}"
+	fi
+	if [ ! -d "$AUDIO_SERVICE_BUILD" ]; then
+		AUDIO_SERVICE_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "aml-audio-service-*" 2>/dev/null | head -1)
+	fi
+	if [ -n "$AUDIO_SERVICE_BUILD" ] && [ -d "$AUDIO_SERVICE_BUILD" ] && [ -f "$AUDIO_SERVICE_BUILD/libaudio_client.so" ]; then
 		cp "$AUDIO_SERVICE_BUILD/libaudio_client.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
+		info_msg "Re-copied libaudio_client.so"
 	fi
 	
-	# Re-copy libamaudioutils.so and libubootenv.so after clean
-	local AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-amlogic-yocto-1.0"
+	# Re-copy libamaudioutils.so after clean
+	# Version format is "1.0-amlogic-yocto"
+	local AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-1.0-amlogic-yocto"
+	if [ ! -d "$AUDIO_UTILS_BUILD" ]; then
+		AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-amlogic-yocto-1.0"
+	fi
 	if [ ! -d "$AUDIO_UTILS_BUILD" ]; then
 		AUDIO_UTILS_BUILD="$BUILD/aml-audio-utils-${PKG_VERSION}"
 	fi
-	if [ -f "$AUDIO_UTILS_BUILD/libamaudioutils.so" ]; then
+	if [ ! -d "$AUDIO_UTILS_BUILD" ]; then
+		AUDIO_UTILS_BUILD=$(find "$BUILD" -maxdepth 1 -type d -name "aml-audio-utils-*" 2>/dev/null | head -1)
+	fi
+	if [ -n "$AUDIO_UTILS_BUILD" ] && [ -d "$AUDIO_UTILS_BUILD" ] && [ -f "$AUDIO_UTILS_BUILD/libamaudioutils.so" ]; then
 		cp "$AUDIO_UTILS_BUILD/libamaudioutils.so" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
 		info_msg "Re-copied libamaudioutils.so"
 	fi
-	local UBOOTENV_LIB="$PKGS_DIR/aml-ubootenv-dev/sources/lib/libubootenv.so"
-	if [ -f "$UBOOTENV_LIB" ]; then
-		cp "$UBOOTENV_LIB" "$STAGING_DIR/usr/lib/" 2>/dev/null || true
-		info_msg "Re-copied libubootenv.so"
-	fi
+	# libubootenv.so is not needed - DISABLE_UBOOTENV is defined in Makefile
 	
 	# Remove -lz from LDFLAGS (system library, available at runtime)
 	# Only process Makefile, skip tvserver.mk to avoid potential issues
@@ -581,40 +688,18 @@ EOF
 			sed -i 's/  \+/ /g' "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
 			info_msg "Removed -lz from Makefile (system library, available at runtime)"
 		fi
-		# Keep -lubootenv since we have libubootenv.so in staging
-		# Only remove if library doesn't exist
-		if [ ! -f "$STAGING_DIR/usr/lib/libubootenv.so" ] && head -n 1000 "$PKG_BUILD_DIR/Makefile" 2>/dev/null | grep -q "-lubootenv"; then
+		# Remove -lubootenv since DISABLE_UBOOTENV is defined
+		if head -n 1000 "$PKG_BUILD_DIR/Makefile" 2>/dev/null | grep -q "-lubootenv"; then
 			sed -i 's/\s*-lubootenv\s*/ /g; s/\s*-lubootenv$//g; s/-lubootenv\s*//g' "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
 			sed -i 's/  \+/ /g' "$PKG_BUILD_DIR/Makefile" 2>/dev/null || true
-			info_msg "Removed -lubootenv from Makefile (library not available)"
+			info_msg "Removed -lubootenv from Makefile (DISABLE_UBOOTENV is defined)"
 		fi
 	fi
 	
-	# Ensure -lubootenv and -lamaudioutils are in LDLIBS before building
+	# Ensure -lamaudioutils is in LDLIBS before building
 	# This must be done after all library copying and Makefile modifications
 	# Use head to limit file size check (prevent hanging on huge files)
-	if [ -f "$STAGING_DIR/usr/lib/libubootenv.so" ]; then
-		# Check if -lubootenv is already in any LDLIBS line
-		if ! head -n 1000 "$PKG_BUILD_DIR/Makefile" 2>/dev/null | grep -q "\-lubootenv"; then
-			# Find existing LDLIBS line and append to it, or create new one
-			# Handle both := and += assignments
-			if head -n 1000 "$PKG_BUILD_DIR/Makefile" 2>/dev/null | grep -q "^LDLIBS"; then
-				# Append to existing LDLIBS line (find first occurrence and add to it)
-				local LDLIBS_LINE=$(grep -n "^LDLIBS" "$PKG_BUILD_DIR/Makefile" 2>/dev/null | head -1 | cut -d: -f1)
-				if [ -n "$LDLIBS_LINE" ]; then
-					# Append -lubootenv to the end of the line
-					sed -i "${LDLIBS_LINE}s|\$| -lubootenv|" "$PKG_BUILD_DIR/Makefile" 2>/dev/null || \
-					echo "LDLIBS += -lubootenv" >> "$PKG_BUILD_DIR/Makefile"
-				else
-					echo "LDLIBS += -lubootenv" >> "$PKG_BUILD_DIR/Makefile"
-				fi
-				info_msg "Added -lubootenv to LDLIBS before build"
-			else
-				echo "LDLIBS += -lubootenv" >> "$PKG_BUILD_DIR/Makefile"
-				info_msg "Added LDLIBS with -lubootenv before build"
-			fi
-		fi
-	fi
+	# Note: -lubootenv is not needed - DISABLE_UBOOTENV is defined in Makefile
 	if [ -f "$STAGING_DIR/usr/lib/libamaudioutils.so" ]; then
 		if ! head -n 1000 "$PKG_BUILD_DIR/Makefile" 2>/dev/null | grep -q "\-lamaudioutils"; then
 			if head -n 1000 "$PKG_BUILD_DIR/Makefile" 2>/dev/null | grep -q "^LDLIBS"; then

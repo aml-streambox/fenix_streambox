@@ -124,25 +124,64 @@ EOF
 				local patch="$PKG_DIR/sources/debian/patches/$patch_name"
 				if [ -f "$patch" ]; then
 					info_msg "Applying patch: $patch_name"
-					# Try different patch strip levels
+					# Try to apply the patch with different strip levels
 					# Patches reference "expat-2.6.1/expat/lib/xmlparse.c" but files are at "lib/xmlparse.c"
 					# So we need -p2 to strip "expat-2.6.1/expat/" or -p1 to strip "expat/"
 					local PATCH_SUCCESS=false
-					if patch -p2 < "$patch" 2>/dev/null; then
-						PATCH_SUCCESS=true
-					elif patch -p1 < "$patch" 2>/dev/null; then
-						PATCH_SUCCESS=true
-					elif patch -p3 < "$patch" 2>/dev/null; then
-						PATCH_SUCCESS=true
+					local PATCH_OUTPUT=""
+					
+					# Try -p2 first
+					PATCH_OUTPUT=$(patch --forward -p2 < "$patch" 2>&1) && PATCH_SUCCESS=true
+					if [ "$PATCH_SUCCESS" = false ]; then
+						# Check if it's already applied
+						if echo "$PATCH_OUTPUT" | grep -qi "already applied\|previously applied\|reversed\|Skipping patch"; then
+							info_msg "Patch $patch_name is already applied (detected with -p2), skipping"
+							PATCH_SUCCESS=true
+						else
+							# Try -p1
+							PATCH_OUTPUT=$(patch --forward -p1 < "$patch" 2>&1) && PATCH_SUCCESS=true
+							if [ "$PATCH_SUCCESS" = false ]; then
+								# Check if it's already applied
+								if echo "$PATCH_OUTPUT" | grep -qi "already applied\|previously applied\|reversed\|Skipping patch"; then
+									info_msg "Patch $patch_name is already applied (detected with -p1), skipping"
+									PATCH_SUCCESS=true
+								else
+									# Try -p3
+									PATCH_OUTPUT=$(patch --forward -p3 < "$patch" 2>&1) && PATCH_SUCCESS=true
+									if [ "$PATCH_SUCCESS" = false ]; then
+										# Check if it's already applied
+										if echo "$PATCH_OUTPUT" | grep -qi "already applied\|previously applied\|reversed\|Skipping patch"; then
+											info_msg "Patch $patch_name is already applied (detected with -p3), skipping"
+											PATCH_SUCCESS=true
+										fi
+									fi
+								fi
+							fi
+						fi
 					fi
 					
 					if [ "$PATCH_SUCCESS" = false ]; then
 						warning_msg "Patch $patch_name failed with -p1, -p2, and -p3"
 						# Try to apply with fuzz as last resort
-						if ! patch -p2 --fuzz=3 < "$patch" 2>/dev/null; then
-							if ! patch -p1 --fuzz=3 < "$patch" 2>/dev/null; then
-								error_msg "Patch $patch_name failed to apply. Please check patch paths."
-								return 1
+						PATCH_OUTPUT=$(patch --forward -p2 --fuzz=3 < "$patch" 2>&1) && PATCH_SUCCESS=true
+						if [ "$PATCH_SUCCESS" = false ]; then
+							# Check if it's already applied even with fuzz
+							if echo "$PATCH_OUTPUT" | grep -qi "already applied\|previously applied\|reversed\|Skipping patch"; then
+								info_msg "Patch $patch_name is already applied (detected with fuzz), skipping"
+								PATCH_SUCCESS=true
+							else
+								PATCH_OUTPUT=$(patch --forward -p1 --fuzz=3 < "$patch" 2>&1) && PATCH_SUCCESS=true
+								if [ "$PATCH_SUCCESS" = false ]; then
+									# Check if it's already applied
+									if echo "$PATCH_OUTPUT" | grep -qi "already applied\|previously applied\|reversed\|Skipping patch"; then
+										info_msg "Patch $patch_name is already applied (detected with fuzz -p1), skipping"
+										PATCH_SUCCESS=true
+									else
+										error_msg "Patch $patch_name failed to apply. Please check patch paths."
+										error_msg "Patch output: $PATCH_OUTPUT"
+										return 1
+									fi
+								fi
 							fi
 						fi
 					fi
@@ -152,25 +191,37 @@ EOF
 			# Fallback: apply all patches in alphabetical order
 			for patch in "$PKG_DIR/sources/debian/patches"/*.patch; do
 				if [ -f "$patch" ] && [ "$(basename "$patch")" != "series" ]; then
-					info_msg "Applying patch: $(basename $patch)"
-					# Try different patch strip levels
-					# Patches reference "expat-2.6.1/expat/lib/xmlparse.c" but files are at "lib/xmlparse.c"
-					local PATCH_SUCCESS=false
-					if patch -p2 < "$patch" 2>/dev/null; then
-						PATCH_SUCCESS=true
-					elif patch -p1 < "$patch" 2>/dev/null; then
-						PATCH_SUCCESS=true
-					elif patch -p3 < "$patch" 2>/dev/null; then
-						PATCH_SUCCESS=true
+					local patch_name=$(basename "$patch")
+					info_msg "Applying patch: $patch_name"
+					# Check if patch is already applied using dry-run
+					local PATCH_ALREADY_APPLIED=false
+					local DRY_RUN_OUTPUT
+					DRY_RUN_OUTPUT=$(patch --forward --dry-run -p2 < "$patch" 2>&1)
+					if echo "$DRY_RUN_OUTPUT" | grep -qi "already applied\|previously applied\|reversed"; then
+						PATCH_ALREADY_APPLIED=true
+						info_msg "Patch $patch_name is already applied, skipping"
 					fi
 					
-					if [ "$PATCH_SUCCESS" = false ]; then
-						warning_msg "Patch $(basename $patch) failed with -p1, -p2, and -p3"
-						# Try to apply with fuzz as last resort
-						if ! patch -p2 --fuzz=3 < "$patch" 2>/dev/null; then
-							if ! patch -p1 --fuzz=3 < "$patch" 2>/dev/null; then
-								error_msg "Patch $(basename $patch) failed to apply. Please check patch paths."
-								return 1
+					if [ "$PATCH_ALREADY_APPLIED" = false ]; then
+						# Try different patch strip levels
+						# Patches reference "expat-2.6.1/expat/lib/xmlparse.c" but files are at "lib/xmlparse.c"
+						local PATCH_SUCCESS=false
+						if patch --forward -p2 < "$patch" 2>/dev/null; then
+							PATCH_SUCCESS=true
+						elif patch --forward -p1 < "$patch" 2>/dev/null; then
+							PATCH_SUCCESS=true
+						elif patch --forward -p3 < "$patch" 2>/dev/null; then
+							PATCH_SUCCESS=true
+						fi
+						
+						if [ "$PATCH_SUCCESS" = false ]; then
+							warning_msg "Patch $patch_name failed with -p1, -p2, and -p3"
+							# Try to apply with fuzz as last resort
+							if ! patch --forward -p2 --fuzz=3 < "$patch" 2>/dev/null; then
+								if ! patch --forward -p1 --fuzz=3 < "$patch" 2>/dev/null; then
+									error_msg "Patch $patch_name failed to apply. Please check patch paths."
+									return 1
+								fi
 							fi
 						fi
 					fi
