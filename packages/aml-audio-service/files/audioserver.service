@@ -1,6 +1,7 @@
 [Unit]
 Description=Audio Server Startup
-After=tee-supplicant.service
+After=binder.service tee-supplicant.service
+Requires=binder.service
 
 [Service]
 User=root
