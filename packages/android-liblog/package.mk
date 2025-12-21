@@ -70,7 +70,7 @@ PKG_SHORTDESC="Android logging library (Amlogic version)"
 PKG_NEED_BUILD="YES"
 
 make_target() {
-	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${PKG_VERSION}_${DISTRIB_ARCH}"
+	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
 	# Overwrite by recreating directory structure
 	mkdir -p $pkgdir/DEBIAN
 
@@ -174,11 +174,11 @@ EOF
 }
 
 makeinstall_target() {
-	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${PKG_VERSION}_${DISTRIB_ARCH}"
-	mkdir -p $BUILD_DEBS/$PKG_VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/
+	local pkgdir="$BUILD_IMAGES/.tmp/${PKG_NAME}_${VERSION}_${DISTRIB_ARCH}"
+	mkdir -p $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/
 	# Overwrite old debs by deleting contents
-	find $BUILD_DEBS/$PKG_VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/ -mindepth 1 -delete 2>/dev/null || true
-	cp ${pkgdir}.deb $BUILD_DEBS/$PKG_VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/ 2>/dev/null || true
+	find $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/ -mindepth 1 -delete 2>/dev/null || true
+	cp ${pkgdir}.deb $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/${PKG_NAME}/ 2>/dev/null || true
 
 	# Overwrite deb file instead of removing
 	: > ${pkgdir}.deb 2>/dev/null || true
