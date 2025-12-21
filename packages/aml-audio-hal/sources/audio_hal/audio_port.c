@@ -839,7 +839,7 @@ static ssize_t output_port_write_alsa(output_port *port, void *buffer, int bytes
         return bytes;
     }
 
-    if (pcm_is_ready(port->pcm_handle)) {
+    if (port->pcm_handle && pcm_is_ready(port->pcm_handle)) {
         struct snd_pcm_status status;
 
         pcm_ioctl(port->pcm_handle, SNDRV_PCM_IOCTL_STATUS, &status);

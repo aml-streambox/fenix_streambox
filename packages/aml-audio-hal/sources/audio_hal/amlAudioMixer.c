@@ -397,8 +397,12 @@ static int mixer_output_startup(struct amlAudioMixer *audio_mixer)
     MIXER_OUTPUT_PORT port_index = mixer_get_cur_outport(audio_mixer, &out_port);
     R_CHECK_POINTER_LEGAL(-1, out_port, "");
     AM_LOGI("output port:%s", mixerOutputType2Str(port_index));
-    out_port->start(out_port);
+    int ret = out_port->start(out_port);
     pthread_mutex_unlock(&audio_mixer->outport_locks[port_index]);
+    if (ret < 0) {
+        AM_LOGE("Failed to start output port: %d", ret);
+        return ret;
+    }
     audio_mixer->submix_standby = 0;
 
     return 0;
@@ -1884,6 +1888,13 @@ static int initSubMixingOutput(
         if (adev->is_TV) {
             ALOGI("%s(), sink gain addr %p", __func__, adev->sink_gain);
             subMixingSetSinkGain(adev, adev->sink_gain);
+        }
+        /* Start the output port (open PCM device) before starting the mixing thread
+         * to ensure the PCM handle is valid when the thread starts writing */
+        int ret = mixer_output_startup(adev->audio_mixer);
+        if (ret < 0) {
+            AM_LOGE("Failed to startup mixer output port: %d", ret);
+            return ret;
         }
         startMixingThread(adev->audio_mixer);
     } else if (type == MIXER_MS12) {
