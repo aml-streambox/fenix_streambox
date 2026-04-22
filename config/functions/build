@@ -32,20 +32,51 @@ build_uboot() {
 
 	cd ${ROOT}
 	if [ ! -d "$UBOOT_VENDOR_DIR"/.git ]; then
-		info_msg "U-boot repository does not exist, clone u-boot repository('$UBOOT_GIT_BRANCH') from '$UBOOT_SOURCE_URL'..."
-		## Clone u-boot from Khadas GitHub
-		git clone $GIT_CLONE_OPTIONS $UBOOT_SOURCE_URL -b $UBOOT_GIT_BRANCH "$UBOOT_VENDOR_DIR"
-		[ $? != 0 ] && error_msg "Failed to clone 'u-boot'" && return -1
+		# Check if source is a local path (starts with /)
+		if [[ "$UBOOT_SOURCE_URL" == /* ]]; then
+			info_msg "U-boot source is local path: '$UBOOT_SOURCE_URL'"
+			if [ -d "$UBOOT_SOURCE_URL"/.git ]; then
+				info_msg "Copying local u-boot repository to build directory..."
+				cp -r "$UBOOT_SOURCE_URL" "$UBOOT_VENDOR_DIR"
+				[ $? != 0 ] && error_msg "Failed to copy local u-boot" && return -1
+			else
+				error_msg "Local u-boot path '$UBOOT_SOURCE_URL' is not a git repository"
+				return -1
+			fi
+		else
+			info_msg "U-boot repository does not exist, clone u-boot repository('$UBOOT_GIT_BRANCH') from '$UBOOT_SOURCE_URL'..."
+			## Clone u-boot from Khadas GitHub
+			git clone $GIT_CLONE_OPTIONS $UBOOT_SOURCE_URL -b $UBOOT_GIT_BRANCH "$UBOOT_VENDOR_DIR"
+			[ $? != 0 ] && error_msg "Failed to clone 'u-boot'" && return -1
+		fi
 	fi
 
 	cd "$UBOOT_VENDOR_DIR"
 	touch .scmversion
 
+	# For local repos, re-sync from source on every build
+	if [[ "$UBOOT_SOURCE_URL" == /* ]]; then
+		info_msg "Re-syncing u-boot from local source: '$UBOOT_SOURCE_URL'..."
+		# Fetch to a remote tracking ref, then reset to it
+		git fetch "$UBOOT_SOURCE_URL" $UBOOT_GIT_BRANCH:refs/remotes/local_src/$UBOOT_GIT_BRANCH
+		if [ $? -eq 0 ]; then
+			git reset --hard refs/remotes/local_src/$UBOOT_GIT_BRANCH
+		else
+			error_msg "Failed to sync u-boot from local source"
+			return -1
+		fi
+	fi
+
 	if ! git branch | grep "^* $UBOOT_GIT_BRANCH$" > /dev/null; then
 		if ! git branch | grep "^  $UBOOT_GIT_BRANCH$" > /dev/null; then
-			# New branch? Try to fetch it.
-			info_msg "Fetching '$UBOOT_GIT_BRANCH' from '$UBOOT_SOURCE_URL'..."
-			git fetch origin $UBOOT_GIT_BRANCH:$UBOOT_GIT_BRANCH
+			# New branch? Try to fetch it (only for remote repos).
+			if [[ "$UBOOT_SOURCE_URL" != /* ]]; then
+				info_msg "Fetching '$UBOOT_GIT_BRANCH' from '$UBOOT_SOURCE_URL'..."
+				git fetch origin $UBOOT_GIT_BRANCH:$UBOOT_GIT_BRANCH
+			else
+				error_msg "U-boot: Branch '$UBOOT_GIT_BRANCH' not found in local repo"
+				return -1
+			fi
 		fi
 
 		info_msg "U-boot: Switch to branch '$UBOOT_GIT_BRANCH'"
@@ -62,8 +93,10 @@ build_uboot() {
 		info_msg "U-boot: Already on branch '$UBOOT_GIT_BRANCH'"
 	fi
 
-	# Update u-boot
-	update_git_repo "$PWD" "$UBOOT_GIT_BRANCH"
+	# Update u-boot (skip for local repos)
+	if [[ "$UBOOT_SOURCE_URL" != /* ]]; then
+		update_git_repo "$PWD" "$UBOOT_GIT_BRANCH"
+	fi
 
 	info_msg "Build u-boot..."
 
@@ -119,10 +152,23 @@ build_linux() {
 
 	if [ -n "$LINUX_COMMON_DRIVERS_GIT_BRANCH" ]; then
 		if [ ! -d "$LINUX_COMMON_DRIVERS_DIR"/.git ]; then
-			info_msg "Linux common drivers repository does not exist, clone linux common drviers repository('$LINUX_COMMON_DRIVERS_GIT_BRANCH') from '$LINUX_COMMON_DRIVERS_SOURCE_URL'..."
-			## Clone linux common drivers from Khadas GitHub
-			git clone $GIT_CLONE_OPTIONS $LINUX_COMMON_DRIVERS_SOURCE_URL -b $LINUX_COMMON_DRIVERS_GIT_BRANCH "$LINUX_COMMON_DRIVERS_DIR"
-			[ $? != 0 ] && error_msg "Failed to clone 'linux common drivers'" && return -1
+			# Check if source is a local path (starts with /)
+			if [[ "$LINUX_COMMON_DRIVERS_SOURCE_URL" == /* ]]; then
+				info_msg "Linux common drivers source is local path: '$LINUX_COMMON_DRIVERS_SOURCE_URL'"
+				if [ -d "$LINUX_COMMON_DRIVERS_SOURCE_URL"/.git ]; then
+					info_msg "Copying local linux common drivers repository to build directory..."
+					cp -r "$LINUX_COMMON_DRIVERS_SOURCE_URL" "$LINUX_COMMON_DRIVERS_DIR"
+					[ $? != 0 ] && error_msg "Failed to copy local linux common drivers" && return -1
+				else
+					error_msg "Local linux common drivers path '$LINUX_COMMON_DRIVERS_SOURCE_URL' is not a git repository"
+					return -1
+				fi
+			else
+				info_msg "Linux common drivers repository does not exist, clone linux common drviers repository('$LINUX_COMMON_DRIVERS_GIT_BRANCH') from '$LINUX_COMMON_DRIVERS_SOURCE_URL'..."
+				## Clone linux common drivers from Khadas GitHub
+				git clone $GIT_CLONE_OPTIONS $LINUX_COMMON_DRIVERS_SOURCE_URL -b $LINUX_COMMON_DRIVERS_GIT_BRANCH "$LINUX_COMMON_DRIVERS_DIR"
+				[ $? != 0 ] && error_msg "Failed to clone 'linux common drivers'" && return -1
+			fi
 		fi
 	fi
 
@@ -159,6 +205,18 @@ build_linux() {
 
 	if [ -n "$LINUX_COMMON_DRIVERS_GIT_BRANCH" ]; then
 		cd "$LINUX_COMMON_DRIVERS_DIR"
+		# For local repos, re-sync from source on every build
+		if [[ "$LINUX_COMMON_DRIVERS_SOURCE_URL" == /* ]]; then
+			info_msg "Re-syncing linux common drivers from local source: '$LINUX_COMMON_DRIVERS_SOURCE_URL'..."
+			# Fetch to a remote tracking ref, then reset to it
+			git fetch "$LINUX_COMMON_DRIVERS_SOURCE_URL" $LINUX_COMMON_DRIVERS_GIT_BRANCH:refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
+			if [ $? -eq 0 ]; then
+				git reset --hard refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
+			else
+				error_msg "Failed to sync linux common drivers from local source"
+				return -1
+			fi
+		fi
 		# Need to fetch common drivers
 		if ! git branch | grep "^* $LINUX_COMMON_DRIVERS_GIT_BRANCH$" > /dev/null; then
 			if ! git branch | grep "^  $LINUX_COMMON_DRIVERS_GIT_BRANCH$" > /dev/null; then
@@ -185,7 +243,10 @@ build_linux() {
 
 	# Update linux
 	update_git_repo "$LINUX_VENDOR_DIR" "$LINUX_GIT_BRANCH"
-	[ -n "$LINUX_COMMON_DRIVERS_GIT_BRANCH" ] && update_git_repo "$LINUX_COMMON_DRIVERS_DIR" "$LINUX_COMMON_DRIVERS_GIT_BRANCH"
+	# Skip git pull for local common drivers repos
+	if [ -n "$LINUX_COMMON_DRIVERS_GIT_BRANCH" ] && [[ "$LINUX_COMMON_DRIVERS_SOURCE_URL" != /* ]]; then
+		update_git_repo "$LINUX_COMMON_DRIVERS_DIR" "$LINUX_COMMON_DRIVERS_GIT_BRANCH"
+	fi
 
 	# no need build just prepare
 	[ ! "$BUILD_LINUX_NOOP" ] || return 0
