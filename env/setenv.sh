@@ -719,7 +719,7 @@ function choose_install_type() {
 }
 
 function lunch() {
-	if [[ "$KHADAS_BOARD" =~ VIM[1234] ]]; then
+	if [[ "$KHADAS_BOARD" =~ VIM[1234]|TVPRO ]]; then
 		export VENDOR="Amlogic"
 		case "$KHADAS_BOARD" in
 			VIM1S)
