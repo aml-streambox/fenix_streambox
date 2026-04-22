@@ -58,7 +58,7 @@ build_uboot() {
 	if [[ "$UBOOT_SOURCE_URL" == /* ]]; then
 		info_msg "Re-syncing u-boot from local source: '$UBOOT_SOURCE_URL'..."
 		# Fetch to a remote tracking ref, then reset to it
-		git fetch "$UBOOT_SOURCE_URL" $UBOOT_GIT_BRANCH:refs/remotes/local_src/$UBOOT_GIT_BRANCH
+		git fetch --force "$UBOOT_SOURCE_URL" $UBOOT_GIT_BRANCH:refs/remotes/local_src/$UBOOT_GIT_BRANCH
 		if [ $? -eq 0 ]; then
 			git reset --hard refs/remotes/local_src/$UBOOT_GIT_BRANCH
 		else
@@ -209,7 +209,7 @@ build_linux() {
 		if [[ "$LINUX_COMMON_DRIVERS_SOURCE_URL" == /* ]]; then
 			info_msg "Re-syncing linux common drivers from local source: '$LINUX_COMMON_DRIVERS_SOURCE_URL'..."
 			# Fetch to a remote tracking ref, then reset to it
-			git fetch "$LINUX_COMMON_DRIVERS_SOURCE_URL" $LINUX_COMMON_DRIVERS_GIT_BRANCH:refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
+			git fetch --force "$LINUX_COMMON_DRIVERS_SOURCE_URL" $LINUX_COMMON_DRIVERS_GIT_BRANCH:refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
 			if [ $? -eq 0 ]; then
 				git reset --hard refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
 			else
