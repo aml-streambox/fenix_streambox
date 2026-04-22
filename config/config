@@ -383,8 +383,8 @@ PACKAGES_URL="http://build.khadas.com/khadas/fenix/packages"
 
 ## U-boot & Linux GitHub URL
 LINUX_SOURCE_URL="${LINUX_SOURCE_URL:-https://github.com/khadas/linux}"
-LINUX_COMMON_DRIVERS_SOURCE_URL="${LINUX_COMMON_DRIVERS_SOURCE_URL:-https://github.com/anshi233/khadas-common-drivers}"
-UBOOT_SOURCE_URL="${UBOOT_SOURCE_URL:-https://github.com/anshi233/khadas-u-boot-4g}"
+LINUX_COMMON_DRIVERS_SOURCE_URL="${LINUX_COMMON_DRIVERS_SOURCE_URL:-https://gitee.com/anshi233/common_drivers_t7}"
+UBOOT_SOURCE_URL="${UBOOT_SOURCE_URL:-https://github.com/khadas/u-boot}"
 
 if [[ $DOWNLOAD_MIRROR == china ]] ; then
 	DEBIAN_MIRROR='mirrors.tuna.tsinghua.edu.cn/debian'

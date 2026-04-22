@@ -4,7 +4,7 @@ source /etc/fenix-release
 
 CONFIG_FIEL="/usr/share/fenix/tone2/tone2.conf"
 
-if [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "VIM1S" ]; then
+if [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "TVPRO" ] || [ "$BOARD" == "VIM1S" ]; then
 	CONTROL1=15
 	CONTROL2=17
 elif [ "$BOARD" == "VIM3" ] || [ "$BOARD" == "VIM3L" ] || [ "$BOARD" == "VIM1" ]; then

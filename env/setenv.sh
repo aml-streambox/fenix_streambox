@@ -737,7 +737,7 @@ function lunch() {
 			VIM3)
 				export CHIP="A311D"
 				;;
-			VIM4)
+			VIM4|TVPRO)
 				export CHIP="A311D2"
 				;;
 		esac

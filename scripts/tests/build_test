@@ -330,6 +330,7 @@ VIM2="KHADAS_BOARD=VIM2"
 VIM3="KHADAS_BOARD=VIM3"
 VIM3L="KHADAS_BOARD=VIM3L"
 VIM4="KHADAS_BOARD=VIM4"
+TVPRO="KHADAS_BOARD=TVPRO"
 VIM1S="KHADAS_BOARD=VIM1S"
 
 MINI="DISTRIB_TYPE=minimal"
@@ -631,18 +632,18 @@ TEST_ML)
 # Edge2 Test Images
 
 # Rootfs Cache Only
-jammy-minimal-CACHE)                                        ( source  $SETENV -d -q -s $VIM4 $JAMMY $MINI $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
-jammy-server-CACHE)                                         ( source  $SETENV -d -q -s $VIM4 $JAMMY $SERVER $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
-jammy-gnome-CACHE)                                          ( source  $SETENV -d -q -s $VIM4 $JAMMY $GNOME $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
+jammy-minimal-CACHE)                                        ( source  $SETENV -d -q -s $TVPRO $JAMMY $MINI $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
+jammy-server-CACHE)                                         ( source  $SETENV -d -q -s $TVPRO $JAMMY $SERVER $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
+jammy-gnome-CACHE)                                          ( source  $SETENV -d -q -s $TVPRO $JAMMY $GNOME $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
 
-noble-minimal-CACHE)                                        ( source  $SETENV -d -q -s $VIM4 $NOBLE $MINI $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
-noble-server-CACHE)                                         ( source  $SETENV -d -q -s $VIM4 $NOBLE $SERVER $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
-noble-gnome-CACHE)                                          ( source  $SETENV -d -q -s $VIM4 $NOBLE $GNOME $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
+noble-minimal-CACHE)                                        ( source  $SETENV -d -q -s $TVPRO $NOBLE $MINI $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
+noble-server-CACHE)                                         ( source  $SETENV -d -q -s $TVPRO $NOBLE $SERVER $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
+noble-gnome-CACHE)                                          ( source  $SETENV -d -q -s $TVPRO $NOBLE $GNOME $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
 noble-xfce-CACHE)                                           ( source  $SETENV -d -q -s $VIM1S $NOBLE $XFCE $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY") & ;;
 
-bookworm-minimal-CACHE)                                     ( source  $SETENV -d -q -s $VIM4 $BOOKWORM $MINI $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY" "$NO_HOST_CHECK") & ;;
-bookworm-server-CACHE)                                      ( source  $SETENV -d -q -s $VIM4 $BOOKWORM $SERVER $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY" "$NO_HOST_CHECK") & ;;
-bookworm-gnome-CACHE)                                       ( source  $SETENV -d -q -s $VIM4 $BOOKWORM $GNOME $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY" "$NO_HOST_CHECK") & ;;
+bookworm-minimal-CACHE)                                     ( source  $SETENV -d -q -s $TVPRO $BOOKWORM $MINI $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY" "$NO_HOST_CHECK") & ;;
+bookworm-server-CACHE)                                      ( source  $SETENV -d -q -s $TVPRO $BOOKWORM $SERVER $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY" "$NO_HOST_CHECK") & ;;
+bookworm-gnome-CACHE)                                       ( source  $SETENV -d -q -s $TVPRO $BOOKWORM $GNOME $EMMC $CMP && make -C "$MAKEDIR" "$ROOTFS_CACHE_ONLY" "$NO_HOST_CHECK") & ;;
 
 #TEST_LIST_END
     *)

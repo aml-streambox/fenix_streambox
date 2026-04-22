@@ -52,6 +52,7 @@ if [ "$CREATE_ROOTFS_CACHE_ONLY" != "yes" ]; then
 			vim3l-*)B=vim3l;;
 			vim3-*) B=vim3 ;;
 			vim4-*) B=vim4 ;;
+			tvpro-*) B=tvpro ;;
 			vim1s-*) B=vim1s ;;
 			edge1-*) B=edge1 ;;
 			edge2-*) B=edge2 ;;

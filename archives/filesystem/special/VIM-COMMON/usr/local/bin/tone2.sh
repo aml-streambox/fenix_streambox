@@ -12,7 +12,7 @@ source /etc/fenix-release
 if [ "$BOARD" == "VIM1S" ]; then
 	OVERLAY_FILE="/boot/dtb/amlogic/kvim1s.dtb.overlay.env"
 	OVERLAY_ARRAY=`cat $OVERLAY_FILE`
-elif [ "$BOARD" == "VIM4" ]; then
+elif [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "TVPRO" ]; then
 	OVERLAY_FILE="/boot/dtb/amlogic/kvim4.dtb.overlay.env"
 	OVERLAY_ARRAY=`cat $OVERLAY_FILE`
 elif [ "$BOARD" == "VIM3" ]; then
@@ -153,7 +153,7 @@ if [ "$selected_mode" = "I2S" ] || [ "$selected_mode" = "USB" ]; then
 		zenity --warning --height=100 --width=200 \
         	--text="Maybe you need to select the sound output device in system settings."
 		echo "usb" | sudo tee $CONFIG_FIEL
-		if [ "$BOARD" == "VIM1S" ] || [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "VIM3" ] || [ "$BOARD" == "VIM3L" ]; then
+		if [ "$BOARD" == "VIM1S" ] || [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "TVPRO" ] || [ "$BOARD" == "VIM3" ] || [ "$BOARD" == "VIM3L" ]; then
 			if [[ "$OVERLAY_ARRAY" =~ "i2s" ]]; then
 				OVERLAY_ARRAY=`echo $OVERLAY_ARRAY | sed 's/i2s//g'`
 				OVERLAY_ARRAY=`echo $OVERLAY_ARRAY | sed 's/  / /g'`
@@ -173,7 +173,7 @@ else
 	fi
 fi
 
-if [ "$BOARD" == "VIM1S" ] || [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "VIM3" ] || [ "$BOARD" == "VIM3L" ]; then
+if [ "$BOARD" == "VIM1S" ] || [ "$BOARD" == "VIM4" ] || [ "$BOARD" == "TVPRO" ] || [ "$BOARD" == "VIM3" ] || [ "$BOARD" == "VIM3L" ]; then
 	echo "$OVERLAY_ARRAY" | sudo tee $OVERLAY_FILE
 else
 	sudo sed -i '/overlays=/d' "$OVERLAY_FILE"

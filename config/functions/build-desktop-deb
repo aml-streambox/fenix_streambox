@@ -112,8 +112,8 @@ build_desktop_deb() {
 					DM=lightdm
 				fi
 
-				# Fix Ubuntu 20.04 Gnome desktop for VIM4/1S/Edge2
-				if [ "$KHADAS_BOARD" == "VIM4" ] || [ "$KHADAS_BOARD" == "VIM1S" ] || [ "$KHADAS_BOARD" == "Edge2" ]; then
+				# Fix Ubuntu 20.04 Gnome desktop for VIM4/TVPRO/1S/Edge2
+				if [ "$KHADAS_BOARD" == "VIM4" ] || [ "$KHADAS_BOARD" == "TVPRO" ] || [ "$KHADAS_BOARD" == "VIM1S" ] || [ "$KHADAS_BOARD" == "Edge2" ]; then
 					DM=gdm3
 				fi
 
@@ -176,7 +176,7 @@ build_desktop_deb() {
 			rm -rf $pkgdir/etc/skel/.local/share/applications/cpu-frequency-setting.desktop
 		fi
 
-		if [ "$KHADAS_BOARD" == "VIM4" ]; then
+		if [ "$KHADAS_BOARD" == "VIM4" ] || [ "$KHADAS_BOARD" == "TVPRO" ]; then
 			rm -rf $pkgdir/etc/skel/.local/share/applications/xfce-usb3-pcie-settings.desktop
 			rm -rf $pkgdir/etc/skel/.local/share/applications/usb3-pcie-settings.desktop
 			rm -rf $pkgdir/etc/skel/.local/share/applications/cpu-frequency-setting.desktop

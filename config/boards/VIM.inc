@@ -208,7 +208,7 @@ pack_image_platform_raw() {
 	PATH_LOGO="$BUILD_IMAGES/logo.img"
 
 	case "$KHADAS_BOARD" in
-	    VIM4)
+	    VIM4|TVPRO)
 	    PATH_BOOT="$UBOOT_IMAGE_DIR"/u-boot.bin.sd.bin.signed
 	    ROOT_OFFSET=0x08400000
 	    LOGO_OFFSET=

@@ -414,8 +414,8 @@ EOF
 		install -m 644 "$PKG_BUILD_DIR/include/Virtualx_v4.h" "${pkgdir}/usr/include/" 2>/dev/null || true
 	fi
 
-	# Install configuration files (board-specific - VIM4 maps to T7)
-	# According to Yocto recipe, VIM4 should use T7 configs
+	# Install configuration files (board-specific - TVPRO/VIM4 maps to T7)
+	# According to Yocto recipe, TVPRO/VIM4 should use T7 configs
 	local CONFIG_FILE=""
 	if [ -f "$PKG_DIR/files/aml_audio_config.t7.json" ]; then
 		CONFIG_FILE="aml_audio_config.t7.json"
@@ -426,7 +426,7 @@ EOF
 		install -m 755 "$PKG_DIR/files/$CONFIG_FILE" "${pkgdir}/etc/halaudio/aml_audio_config.json"
 	fi
 
-	# Install mixer_paths.xml (board-specific - VIM4 maps to T7)
+	# Install mixer_paths.xml (board-specific - TVPRO/VIM4 maps to T7)
 	local MIXER_FILE=""
 	if [ -f "$PKG_DIR/files/mixer_paths.t7.xml" ]; then
 		MIXER_FILE="mixer_paths.t7.xml"

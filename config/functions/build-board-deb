@@ -144,7 +144,7 @@ build_board_deb() {
 		fi
 	fi
 
-	if [ "\$BOARD" == "VIM4" ]; then
+	if [ "\$BOARD" == "VIM4" ] || [ "\$BOARD" == "TVPRO" ]; then
 		systemctl enable camera_isp_3a_server.service
 	fi
 
@@ -331,7 +331,9 @@ build_board_deb() {
 	fi
 	## Copy board special rootfs files, these files will
 	## overwrite the board common part files.
-	rsync -aI $ROOT/archives/filesystem/special/$KHADAS_BOARD/* $pkgdir/
+	if [ -d "$ROOT/archives/filesystem/special/$KHADAS_BOARD" ]; then
+		rsync -aI $ROOT/archives/filesystem/special/$KHADAS_BOARD/* $pkgdir/
+	fi
 
 	if [ "$DISTRIBUTION" == "Ubuntu" ] && [ "$DISTRIB_TYPE" != "minimal" ]; then
 		# Add fenix repository
@@ -498,7 +500,7 @@ build_board_deb() {
 	#############################################
 	EOF
 
-	if [ "$KHADAS_BOARD" == "VIM4" ] || [ "$KHADAS_BOARD" == "VIM1S" ] || [ "$KHADAS_BOARD" == "Edge2" ]; then
+	if [ "$KHADAS_BOARD" == "VIM4" ] || [ "$KHADAS_BOARD" == "TVPRO" ] || [ "$KHADAS_BOARD" == "VIM1S" ] || [ "$KHADAS_BOARD" == "Edge2" ]; then
 		sed -i '/INSTALL_TYPE/d' $pkgdir/etc/fenix-release
 	fi
 

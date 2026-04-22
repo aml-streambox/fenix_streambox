@@ -25,7 +25,7 @@ fi
 if [ -z "$DISTRIBUTION" ] || [ -z "$DISTRIB_RELEASE" ] || [ -z "$KHADAS_BOARD" ]; then
     echo "Setting up environment (same as 'make debs')..."
     # Use the same environment setup as make debs
-    source setenv.sh -q -s KHADAS_BOARD=VIM4 LINUX=5.15 UBOOT=2019.01 DISTRIBUTION=Ubuntu DISTRIB_RELEASE=noble DISTRIB_RELEASE_VERSION=24.04 DISTRIB_TYPE=server DISTRIB_ARCH=arm64 INSTALL_TYPE=EMMC COMPRESS_IMAGE=no
+    source setenv.sh -q -s KHADAS_BOARD=TVPRO LINUX=5.15 UBOOT=2019.01 DISTRIBUTION=Ubuntu DISTRIB_RELEASE=noble DISTRIB_RELEASE_VERSION=24.04 DISTRIB_TYPE=server DISTRIB_ARCH=arm64 INSTALL_TYPE=EMMC COMPRESS_IMAGE=no
 else
     echo "Using existing environment:"
     echo "  KHADAS_BOARD=$KHADAS_BOARD"
