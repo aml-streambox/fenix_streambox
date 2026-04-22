@@ -349,6 +349,24 @@ install_deb_chroot()
 		install_output=$(echo "$install_output" | grep -v "^DPKG_EXIT_CODE:")
 	fi
 	
+	# If dpkg failed due to missing dependencies, try to fix with apt
+	if [ "$install_status" != "0" ]; then
+		info_msg "dpkg reported issues for $name, attempting apt-get install -f to resolve dependencies..."
+		local apt_fix_output
+		apt_fix_output=$(chroot $ROOTFS_TEMP /bin/bash -c "apt-get update && apt-get install -f -y 2>&1; echo 'APT_EXIT_CODE:' \$?" 2>&1)
+		local apt_fix_status=$(echo "$apt_fix_output" | grep -E "^APT_EXIT_CODE:" | tail -1 | awk '{print $2}' || echo "1")
+		# Re-check if the package is now configured
+		local pkg_name_check
+		pkg_name_check=$(echo "$name" | sed 's/_.*//')
+		if chroot $ROOTFS_TEMP /bin/bash -c "dpkg -l $pkg_name_check 2>/dev/null | grep -q '^ii'" 2>/dev/null; then
+			info_msg "Package $name resolved via apt-get install -f"
+			install_status=0
+			install_output="$install_output\n$apt_fix_output"
+		else
+			install_output="$install_output\n$apt_fix_output"
+		fi
+	fi
+	
 	if [ "$install_status" = "0" ]; then
 		info_msg "Package $name installed successfully"
 		if [[ "$name" == *"linux-headers"* ]]; then
