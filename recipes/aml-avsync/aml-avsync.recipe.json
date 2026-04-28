@@ -1,0 +1,69 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "aml-avsync",
+  "version": "1.0-amlogic-yocto",
+  "summary": "Amlogic audio/video synchronization library",
+  "license": "AMLOGIC",
+  "source": {
+    "type": "local",
+    "path": "packages/aml-avsync/sources",
+    "subdir": "src"
+  },
+  "build": {
+    "class": "make",
+    "env": {
+      "TARGET_CFLAGS": "-fPIC -O2"
+    }
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": ["make"]
+  },
+  "outputs": [
+    {
+      "package": "aml-avsync",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic audio/video synchronization library and headers.",
+      "runtime_depends": [],
+      "files": [
+        {
+          "from": "usr/lib/libamlavsync.so",
+          "to": "/usr/lib/libamlavsync.so"
+        },
+        {
+          "from": ".fenix-staging/usr/include/aml_avsync.h",
+          "to": "/usr/include/aml_avsync.h"
+        },
+        {
+          "from": ".fenix-staging/usr/include/aml_avsync_log.h",
+          "to": "/usr/include/aml_avsync_log.h"
+        },
+        {
+          "from": ".fenix-staging/usr/include/aml_queue.h",
+          "to": "/usr/include/aml_queue.h"
+        }
+      ],
+      "sysroot_exports": [
+        {
+          "from": "/usr/lib/libamlavsync.so",
+          "to": "/usr/lib/libamlavsync.so"
+        },
+        {
+          "from": "/usr/include/aml_avsync.h",
+          "to": "/usr/include/aml_avsync.h"
+        },
+        {
+          "from": "/usr/include/aml_avsync_log.h",
+          "to": "/usr/include/aml_avsync_log.h"
+        },
+        {
+          "from": "/usr/include/aml_queue.h",
+          "to": "/usr/include/aml_queue.h"
+        }
+      ]
+    }
+  ]
+}

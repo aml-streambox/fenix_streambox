@@ -1,0 +1,26 @@
+{
+  "schema": "fenix.package-group.v1",
+  "name": "t7-aml-legacy-binary-stack",
+  "selectors": {
+    "boards": ["TVPRO", "VIM4"],
+    "distributions": ["Ubuntu", "Debian"],
+    "releases": ["jammy", "noble", "bookworm"],
+    "image_types": ["server", "gnome"],
+    "install_types": ["EMMC", "SD-USB"]
+  },
+  "include": [],
+  "recipes": [
+    "optee_userspace_deb_aml",
+    "optee_video_firmware_deb_aml",
+    "libion_deb_aml",
+    "libge2d_deb_aml",
+    "libmultienc_deb_aml",
+    "libjpegenc_deb_aml",
+    "libamvenc_deb_aml",
+    "multimedia_debs_aml",
+    "libadla_deb_aml",
+    "meson-display-deb-aml"
+  ],
+  "distro_packages": [],
+  "notes": "Tracks legacy Amlogic prebuilt deb wrappers selected by TVPRO/VIM4 board hooks. These are vendor-blob exceptions, not source migrations."
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libmultienc_deb_aml",
+  "version": "0+bfc27e3cb245039460885aa0e9472188ce26007e",
+  "summary": "Amlogic multi-encoder prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/libmultienc_deb_aml/archive/bfc27e3cb245039460885aa0e9472188ce26007e.tar.gz",
+    "sha256": "5530f4286fc14f647fa5943063a8c68645f6f0dd1a10b6d20ec06f24d562f04c"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "libmultienc-deb-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic multi-encoder prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/libmultienc_deb_aml",
+    "version": "bfc27e3cb245039460885aa0e9472188ce26007e",
+    "sha256": "5530f4286fc14f647fa5943063a8c68645f6f0dd1a10b6d20ec06f24d562f04c",
+    "license_category": "prebuilt Amlogic userspace library deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this library.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching encoder source release or open replacement is identified."
+    }
+  }
+}

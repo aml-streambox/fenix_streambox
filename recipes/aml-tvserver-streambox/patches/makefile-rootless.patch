@@ -1,0 +1,32 @@
+--- a/Makefile
++++ b/Makefile
+@@ -7,8 +7,11 @@ OUT_DIR ?= .
+ LOCAL_PATH = $(shell pwd)
++.DEFAULT_GOAL := all
+-LDFLAGS += -Wl,--no-as-needed -lstdc++ -lpthread -lz -ldl -lrt -L$(STAGING_DIR)/usr/lib
++LDFLAGS += -Wl,--no-as-needed -lstdc++ -lpthread -ldl -lrt -L$(STAGING_DIR)/usr/lib
+ CFLAGS += -Wall -Wno-unknown-pragmas -Wno-format -Wno-format-security\
+           -O3 -fexceptions -fnon-call-exceptions -D_GNU_SOURCE \
+-          -I$(STAGING_DIR)/usr/include -I$(LOCAL_PATH)/include/amlogic -DHAVE_AUDIO -DSTREAM_BOX
++          -I$(STAGING_DIR)/usr/include -I$(LOCAL_PATH)/include -I$(LOCAL_PATH)/include/amlogic -DHAVE_AUDIO -DSTREAM_BOX
++CXXFLAGS += -I$(STAGING_DIR)/usr/include -I$(LOCAL_PATH)/include -I$(LOCAL_PATH)/include/amlogic
++$(shell mkdir -p $(STAGING_DIR)/usr/include/linux && ln -sfn $(LOCAL_PATH)/include/amlogic $(STAGING_DIR)/usr/include/linux/amlogic)
+ 
+ LDFLAGS += -lbinder -llog
+ # Conditionally link ubootenv library
+@@ -122,7 +124,14 @@ clean:
+ 	rm -rf $(TARGET_DIR)/usr/bin/tvservice
+ 
+ install:
++	mkdir -p $(TARGET_DIR)/usr/lib $(TARGET_DIR)/usr/bin $(TARGET_DIR)/etc/tvconfig $(TARGET_DIR)/lib/systemd/system
++	mkdir -p $(STAGING_DIR)/usr/lib $(STAGING_DIR)/usr/include/tvclient
+ 	install -m 0644 $(OUT_DIR)/libtvclient.so $(TARGET_DIR)/usr/lib
++	install -m 0644 $(OUT_DIR)/libtvclient.so $(STAGING_DIR)/usr/lib
+ 	install -m 0644 $(OUT_DIR)/libtv.so $(TARGET_DIR)/usr/lib/
+ 	install -m 0755 $(OUT_DIR)/tvservice $(TARGET_DIR)/usr/bin/
+-	install -m 0755 $(OUT_DIR)/tvtest $(TARGET_DIR)/usr/bin/
++	install -m 0755 $(OUT_DIR)/hdmiin-demo $(TARGET_DIR)/usr/bin/
++	install -m 0644 $(LOCAL_PATH)/client/include/* $(STAGING_DIR)/usr/include/tvclient/
++	if [ -n "$(TVCONFIG_DIR)" ] && [ -d "$(TVCONFIG_DIR)/PQ" ]; then mkdir -p $(TARGET_DIR)/etc/tvconfig/pq && cp -r "$(TVCONFIG_DIR)/PQ"/* $(TARGET_DIR)/etc/tvconfig/pq/; fi
++	if [ -n "$(TVCONFIG_DIR)" ] && [ -d "$(TVCONFIG_DIR)/tvconfig" ]; then cp -r "$(TVCONFIG_DIR)/tvconfig"/* $(TARGET_DIR)/etc/tvconfig/; fi
++	if [ -n "$(TVSERVER_SERVICE)" ] && [ -f "$(TVSERVER_SERVICE)" ]; then install -m 0644 "$(TVSERVER_SERVICE)" $(TARGET_DIR)/lib/systemd/system/tvserver.service; fi

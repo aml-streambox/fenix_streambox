@@ -51,6 +51,12 @@ pkg: _env_is_setup
 	fi
 	@./quick-build-pkg.sh $(PKG)
 
+recipe-lint:
+	@./scripts/fenix-recipe validate -v
+	@./scripts/fenix-recipe order >/dev/null
+	@./scripts/fenix-recipe group-select --board TVPRO --distribution Ubuntu --release noble --image-type server --install-type EMMC >/dev/null
+	@./scripts/fenix-recipe group-select --board VIM4 --distribution Ubuntu --release noble --image-type server --install-type EMMC >/dev/null
+
 uboot-deb: uboot kernel-dtbs
 	@./scripts/build.sh uboot-deb
 
@@ -113,6 +119,7 @@ help:
 	@echo "  debs                  - Build all debian packages."
 	@echo "  pkg PKG=<name>        - Build individual package quickly (no u-boot/kernel)."
 	@echo "                          Example: make pkg PKG=android-binder"
+	@echo "  recipe-lint           - Validate rootless/source recipe metadata."
 	@echo "  image                 - Pack update image."
 	@echo "  clean                 - Cleanup."
 	@echo "  clean-all             - Cleanup all."
@@ -129,4 +136,4 @@ clean-ccache:
 clean-old:
 	CLEAN_OLD_ONLY=1 ./scripts/clean.sh
 
-.PHONY: _env_is_setup
+.PHONY: _env_is_setup recipe-lint

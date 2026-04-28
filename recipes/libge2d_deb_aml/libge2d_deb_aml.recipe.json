@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libge2d_deb_aml",
+  "version": "107ec3a01c18dac5e87864afa0779cf36c98b69f",
+  "summary": "Amlogic GE2D prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/libge2d_deb_aml/archive/107ec3a01c18dac5e87864afa0779cf36c98b69f.tar.gz",
+    "sha256": "da58c58c8bcb65d36f742c632db6f693e807a05e820b12662a135b679d14350d"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "libge2d-deb-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic GE2D prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/libge2d_deb_aml",
+    "version": "107ec3a01c18dac5e87864afa0779cf36c98b69f",
+    "sha256": "da58c58c8bcb65d36f742c632db6f693e807a05e820b12662a135b679d14350d",
+    "license_category": "prebuilt Amlogic userspace library deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this library.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching GE2D source release or open replacement is identified."
+    }
+  }
+}

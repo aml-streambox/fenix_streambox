@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "meson-display-deb-aml",
+  "version": "8d431fa756d7346ffeb06053b92b3f784b3fbca9",
+  "summary": "Amlogic Meson display prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/meson-display-deb-aml/archive/8d431fa756d7346ffeb06053b92b3f784b3fbca9.tar.gz",
+    "sha256": "0395ee2e8d03097fd238729967cb6705ffbc333d089e0265e205bef857ad6644"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "meson-display-deb-aml",
+      "architecture": "arm64",
+      "section": "utils",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic Meson display prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/meson-display-deb-aml",
+    "version": "8d431fa756d7346ffeb06053b92b3f784b3fbca9",
+    "sha256": "0395ee2e8d03097fd238729967cb6705ffbc333d089e0265e205bef857ad6644",
+    "license_category": "prebuilt Amlogic display userspace deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this package.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching source release or distro replacement is identified."
+    }
+  }
+}

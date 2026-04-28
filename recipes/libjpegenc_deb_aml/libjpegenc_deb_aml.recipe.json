@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libjpegenc_deb_aml",
+  "version": "9886c656ae1889ad651d73a0873fb8a18a047382",
+  "summary": "Amlogic JPEG encoder prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/libjpegenc_deb_aml/archive/9886c656ae1889ad651d73a0873fb8a18a047382.tar.gz",
+    "sha256": "684c55ac5b9b6d0e78327997b42295f1eb48080938ef1cde9ee56675a237aa71"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "libjpegenc-deb-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic JPEG encoder prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/libjpegenc_deb_aml",
+    "version": "9886c656ae1889ad651d73a0873fb8a18a047382",
+    "sha256": "684c55ac5b9b6d0e78327997b42295f1eb48080938ef1cde9ee56675a237aa71",
+    "license_category": "prebuilt Amlogic userspace library deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this library.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching JPEG encoder source release or open replacement is identified."
+    }
+  }
+}

@@ -640,11 +640,16 @@ prepare_rootfs() {
 
 	[[ "$CREATE_ROOTFS_CACHE_ONLY" == "yes" ]] && return
 
+	export FENIX_ROOTFS_ASSEMBLY_ACTIVE=yes
+
 	install_distribution_specific
 	install_common
+	install_fenix_custom_feed_packages
+	enable_fenix_custom_recipe_services
 
 	if [[ $(type -t install_custom) == function ]]; then
 	    install_custom
+	    unset FENIX_ROOTFS_ASSEMBLY_ACTIVE
 	    return
 	    # remove service start blockers later!
 	fi
@@ -654,6 +659,7 @@ prepare_rootfs() {
 	execute_in_chroot "dpkg-divert --quiet --local --rename --remove /sbin/initctl"
 	execute_in_chroot "dpkg-divert --quiet --local --rename --remove /sbin/start-stop-daemon"
 	rm -f $ROOTFS_TEMP/usr/sbin/policy-rc.d
+	unset FENIX_ROOTFS_ASSEMBLY_ACTIVE
 }
 
 ## Rootfs
@@ -708,4 +714,3 @@ build_rootfs() {
 
 	return $ret
 }
-

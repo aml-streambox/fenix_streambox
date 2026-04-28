@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libamvenc_deb_aml",
+  "version": "32d7b83800d72bff5bf7dc38869854e4c422ef08",
+  "summary": "Amlogic video encoder prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/libamvenc_deb_aml/archive/32d7b83800d72bff5bf7dc38869854e4c422ef08.tar.gz",
+    "sha256": "a3bed67dc59454c632e546fe1f4f115813dc26727c1e1c603e7203470cb9737a"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "libamvenc-deb-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic video encoder prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/libamvenc_deb_aml",
+    "version": "32d7b83800d72bff5bf7dc38869854e4c422ef08",
+    "sha256": "a3bed67dc59454c632e546fe1f4f115813dc26727c1e1c603e7203470cb9737a",
+    "license_category": "prebuilt Amlogic userspace library deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this library.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching video encoder source release or open replacement is identified."
+    }
+  }
+}

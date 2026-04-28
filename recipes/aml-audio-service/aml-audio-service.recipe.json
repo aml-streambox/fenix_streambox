@@ -1,0 +1,78 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "aml-audio-service",
+  "version": "1.0-amlogic-yocto",
+  "summary": "Amlogic audio service daemon and client library",
+  "license": "AMLOGIC",
+  "source": {
+    "type": "local",
+    "path": "packages/aml-audio-service",
+    "subdir": "sources"
+  },
+  "patches": [
+    "patches/makefile-rootless-binder.patch"
+  ],
+  "build": {
+    "class": "make",
+    "env": {
+      "use_binder": "y"
+    }
+  },
+  "dependencies": {
+    "recipes": [
+      "android-liblog",
+      "android-binder",
+      "aml-audio-utils",
+      "aml-audio-hal"
+    ],
+    "native_tools": ["make"]
+  },
+  "outputs": [
+    {
+      "package": "aml-audio-service",
+      "architecture": "arm64",
+      "section": "libs",
+      "description": "Amlogic Audio Service daemon, tools, and client library.",
+      "runtime_depends": [
+        "aml-audio-utils",
+        "android-binder",
+        "aml-audio-hal",
+        "systemd"
+      ],
+      "files": [
+        {"from": "usr/bin/audio_server", "to": "/usr/bin/audio_server", "mode": "0755"},
+        {"from": "usr/bin/audio_client_test", "to": "/usr/bin/audio_client_test", "mode": "0755"},
+        {"from": "usr/bin/audio_client_test_ac3", "to": "/usr/bin/audio_client_test_ac3", "mode": "0755"},
+        {"from": "usr/bin/audio_client_binder_test", "to": "/usr/bin/audio_client_binder_test", "mode": "0755"},
+        {"from": "usr/bin/halplay", "to": "/usr/bin/halplay", "mode": "0755"},
+        {"from": "usr/bin/hal_capture", "to": "/usr/bin/hal_capture", "mode": "0755"},
+        {"from": "usr/bin/dap_setting", "to": "/usr/bin/dap_setting", "mode": "0755"},
+        {"from": "usr/bin/speaker_delay", "to": "/usr/bin/speaker_delay", "mode": "0755"},
+        {"from": "usr/bin/digital_mode", "to": "/usr/bin/digital_mode", "mode": "0755"},
+        {"from": "usr/bin/test_arc", "to": "/usr/bin/test_arc", "mode": "0755"},
+        {"from": "usr/bin/start_arc", "to": "/usr/bin/start_arc", "mode": "0755"},
+        {"from": "usr/bin/hal_param", "to": "/usr/bin/hal_param", "mode": "0755"},
+        {"from": "usr/bin/hal_dump", "to": "/usr/bin/hal_dump", "mode": "0755"},
+        {"from": "usr/bin/hal_patch", "to": "/usr/bin/hal_patch", "mode": "0755"},
+        {"from": "usr/bin/master_vol", "to": "/usr/bin/master_vol", "mode": "0755"},
+        {"from": "usr/bin/effect_tool", "to": "/usr/bin/effect_tool", "mode": "0755"},
+        {"from": "usr/lib/libaudio_client.so", "to": "/usr/lib/libaudio_client.so"},
+        {"from": ".fenix-staging/usr/include/audio_if_client.h", "to": "/usr/include/audio_if_client.h", "mode": "0644"},
+        {"from": ".fenix-staging/usr/include/audio_if.h", "to": "/usr/include/audio_if.h", "mode": "0644"},
+        {"from": ".fenix-staging/usr/include/audio_effect_if.h", "to": "/usr/include/audio_effect_if.h", "mode": "0644"},
+        {"from": ".fenix-staging/usr/include/audio_effect_params.h", "to": "/usr/include/audio_effect_params.h", "mode": "0644"},
+        {"from": "lib/systemd/system/audioserver.service", "to": "/lib/systemd/system/audioserver.service", "mode": "0644"}
+      ],
+      "sysroot_exports": [
+        {"from": "usr/lib/libaudio_client.so", "to": "/usr/lib/libaudio_client.so"},
+        {"from": "usr/include/audio_if_client.h", "to": "/usr/include/audio_if_client.h"},
+        {"from": "usr/include/audio_if.h", "to": "/usr/include/audio_if.h"},
+        {"from": "usr/include/audio_effect_if.h", "to": "/usr/include/audio_effect_if.h"},
+        {"from": "usr/include/audio_effect_params.h", "to": "/usr/include/audio_effect_params.h"}
+      ],
+      "services": [
+        {"unit": "audioserver.service", "enable": true}
+      ]
+    }
+  ]
+}

@@ -401,6 +401,70 @@ install_deb_chroot()
 	rm -f $ROOTFS_TEMP/root/$name
 }
 
+## Configure and optionally install packages from the local Fenix custom feed
+install_fenix_custom_feed_packages()
+{
+	local feed_dir="${FENIX_CUSTOM_FEED_DIR:-$BUILD/rootless/feed}"
+	local rootfs_feed_dir="${FENIX_CUSTOM_FEED_ROOTFS_DIR:-/opt/fenix/local-feed}"
+	local packages="${FENIX_CUSTOM_FEED_PACKAGES:-}"
+
+	if [ "${FENIX_CUSTOM_FEED_ENABLE:-no}" != "yes" ] && [ -z "$packages" ]; then
+		return 0
+	fi
+
+	if [ ! -d "$feed_dir" ]; then
+		error_msg "Fenix custom feed is enabled but feed directory does not exist: $feed_dir"
+		return 1
+	fi
+
+	if [ ! -f "$feed_dir/Packages" ] && [ ! -f "$feed_dir/Packages.gz" ]; then
+		error_msg "Fenix custom feed lacks Packages metadata: $feed_dir"
+		return 1
+	fi
+
+	local package
+	for package in $packages; do
+		if [[ ! "$package" =~ ^[A-Za-z0-9.+:=~_-]+$ ]]; then
+			error_msg "Invalid package name in FENIX_CUSTOM_FEED_PACKAGES: $package"
+			return 1
+		fi
+	done
+
+	info_msg "Adding Fenix custom feed: $feed_dir"
+	rm -rf "$ROOTFS_TEMP/$rootfs_feed_dir"
+	mkdir -p "$ROOTFS_TEMP/$rootfs_feed_dir" "$ROOTFS_TEMP/etc/apt/sources.list.d"
+	cp -a "$feed_dir/." "$ROOTFS_TEMP/$rootfs_feed_dir/"
+	cat > "$ROOTFS_TEMP/etc/apt/sources.list.d/fenix-local-custom.list" <<-EOF
+	deb [trusted=yes] file:${rootfs_feed_dir} ./
+	EOF
+
+	mount_chroot "$ROOTFS_TEMP"
+	LC_ALL=C LANG=C chroot "$ROOTFS_TEMP" /bin/bash -c "apt-get update"
+	local status=$?
+	if [ "$status" = "0" ] && [ -n "$packages" ]; then
+		info_msg "Installing Fenix custom feed packages: $packages"
+		LC_ALL=C LANG=C chroot "$ROOTFS_TEMP" /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install $packages"
+		status=$?
+	fi
+	umount_chroot "$ROOTFS_TEMP"
+
+	return $status
+}
+
+## Enable systemd services declared in custom source recipes
+enable_fenix_custom_recipe_services()
+{
+	local recipe_files="${FENIX_CUSTOM_RECIPE_FILES:-}"
+
+	[ -n "$recipe_files" ] || return 0
+
+	info_msg "Enabling Fenix custom recipe services from metadata"
+	(
+		cd "$ROOT"
+		scripts/fenix-recipe enable-services --rootfs "$ROOTFS_TEMP" $recipe_files
+	)
+}
+
 ## Umount
 do_umount() {
     warning_msg  "do_unmount: - $1"

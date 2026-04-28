@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libadla_deb_aml",
+  "version": "178a86a32b0849d7fd984261a0325497cffc0196",
+  "summary": "Amlogic ADLA prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/libadla_deb_aml/archive/178a86a32b0849d7fd984261a0325497cffc0196.tar.gz",
+    "sha256": "f4a86014d3e865977b44845158a30130f7eb41c61ce2cd05c02e692cc7f83971"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "libadla-deb-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic ADLA prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/libadla_deb_aml",
+    "version": "178a86a32b0849d7fd984261a0325497cffc0196",
+    "sha256": "f4a86014d3e865977b44845158a30130f7eb41c61ce2cd05c02e692cc7f83971",
+    "license_category": "prebuilt Amlogic ADLA userspace library deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this library.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching ADLA source release or open replacement is identified."
+    }
+  }
+}

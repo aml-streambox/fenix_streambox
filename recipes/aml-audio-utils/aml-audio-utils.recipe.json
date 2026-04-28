@@ -1,0 +1,69 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "aml-audio-utils",
+  "version": "1.0-amlogic-yocto",
+  "summary": "Amlogic audio utility library",
+  "license": "AMLOGIC",
+  "source": {
+    "type": "local",
+    "path": "packages/aml-audio-utils/sources"
+  },
+  "patches": ["patches/makefile-sysroot.patch", "patches/resampler-string-include.patch"],
+  "build": {
+    "class": "make",
+    "env": {
+      "TOOLCHAIN_NEON_SUPPORT": "n"
+    }
+  },
+  "dependencies": {
+    "recipes": ["android-liblog"],
+    "distro_dev": [],
+    "native_tools": ["make"]
+  },
+  "outputs": [
+    {
+      "package": "aml-audio-utils",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic audio utility libraries and development headers.",
+      "runtime_depends": ["android-liblog"],
+      "files": [
+        {
+          "from": "usr/lib/libamaudioutils.so",
+          "to": "/usr/lib/libamaudioutils.so"
+        },
+        {
+          "from": "usr/lib/libcutils.so",
+          "to": "/usr/lib/libcutils.so"
+        },
+        {
+          "from": ".fenix-staging/usr/include/audio_utils",
+          "to": "/usr/include/audio_utils"
+        },
+        {
+          "from": ".fenix-staging/usr/include/IpcBuffer",
+          "to": "/usr/include/IpcBuffer"
+        }
+      ],
+      "sysroot_exports": [
+        {
+          "from": "/usr/lib/libamaudioutils.so",
+          "to": "/usr/lib/libamaudioutils.so"
+        },
+        {
+          "from": "/usr/lib/libcutils.so",
+          "to": "/usr/lib/libcutils.so"
+        },
+        {
+          "from": "/usr/include/audio_utils",
+          "to": "/usr/include/audio_utils"
+        },
+        {
+          "from": "/usr/include/IpcBuffer",
+          "to": "/usr/include/IpcBuffer"
+        }
+      ]
+    }
+  ]
+}

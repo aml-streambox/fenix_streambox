@@ -1,0 +1,65 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "android-liblog",
+  "version": "2:1.0-amlogic-yocto",
+  "summary": "Amlogic Android logging compatibility library",
+  "license": "Apache-2.0",
+  "source": {
+    "type": "local",
+    "path": "packages/android-liblog/sources"
+  },
+  "build": {
+    "class": "make"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": ["make"]
+  },
+  "outputs": [
+    {
+      "package": "android-liblog",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic Android logging compatibility library and headers.",
+      "runtime_depends": [],
+      "files": [
+        {
+          "from": "usr/lib/liblog.so",
+          "to": "/usr/lib/liblog.so"
+        },
+        {
+          "from": "usr/lib/liblog.so.1",
+          "to": "/usr/lib/liblog.so.1"
+        },
+        {
+          "from": "usr/lib/liblog.so.1.0.0",
+          "to": "/usr/lib/liblog.so.1.0.0"
+        },
+        {
+          "from": ".fenix-staging/usr/include/android",
+          "to": "/usr/include/android"
+        },
+        {
+          "from": ".fenix-staging/usr/include/cutils",
+          "to": "/usr/include/cutils"
+        }
+      ],
+      "sysroot_exports": [
+        {
+          "from": "/usr/lib/liblog.so",
+          "to": "/usr/lib/liblog.so"
+        },
+        {
+          "from": "/usr/include/android",
+          "to": "/usr/include/android"
+        },
+        {
+          "from": "/usr/include/cutils",
+          "to": "/usr/include/cutils"
+        }
+      ]
+    }
+  ]
+}

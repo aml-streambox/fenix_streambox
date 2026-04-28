@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "multimedia_debs_aml",
+  "version": "0+ef2f92b9e08d0be7ac090a989dc45cc178c367d5",
+  "summary": "Amlogic multimedia prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/multimedia_debs_aml/archive/ef2f92b9e08d0be7ac090a989dc45cc178c367d5.tar.gz",
+    "sha256": "4c6694675a4f6e5c47c48df017f26296a93794b142b0f5e53effbf40620e2de8"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "multimedia-debs-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic multimedia prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/multimedia_debs_aml",
+    "version": "ef2f92b9e08d0be7ac090a989dc45cc178c367d5",
+    "sha256": "4c6694675a4f6e5c47c48df017f26296a93794b142b0f5e53effbf40620e2de8",
+    "license_category": "prebuilt Amlogic multimedia deb collection; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than source trees for the multimedia components.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until individual source packages or distro replacements are identified."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+--- a/Makefile
++++ b/Makefile
+@@ -69,5 +69,8 @@ install:
+ 	install -m 755 $(OUT_DIR)/servicemanager $(TARGET_DIR)/usr/bin
+ 	$(STRIP) $(TARGET_DIR)/usr/bin/servicemanager
+ 	install -m 755 $(LOCAL_PATH)/servicemgr/S52_binderSmr $(TARGET_DIR)/etc/init.d/S52_binderSmr
++	if [ -n "$(BINDER_SERVICE)" ] && [ -f "$(BINDER_SERVICE)" ]; then \
++		install -m 0644 -D "$(BINDER_SERVICE)" $(TARGET_DIR)/lib/systemd/system/binder.service; \
++	fi
+ 
+ $(shell mkdir -p $(OUT_DIR)/binder $(OUT_DIR)/utils $(OUT_DIR)/cutils $(OUT_DIR)/servicemgr)

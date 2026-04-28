@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fenix.local/schemas/kernel-build-v1.schema.json",
+  "title": "Fenix kernel build metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "kernel_version",
+    "architecture",
+    "source_dir",
+    "build_dir",
+    "modules_dir",
+    "module_symvers",
+    "config",
+    "image",
+    "cross_compile"
+  ],
+  "properties": {
+    "schema": {
+      "const": "fenix.kernel-build.v1"
+    },
+    "kernel_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "architecture": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "build_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modules_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "headers_dir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "module_symvers": {
+      "type": "string",
+      "minLength": 1
+    },
+    "config": {
+      "type": "string",
+      "minLength": 1
+    },
+    "image": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dtbs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "cross_compile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "array", "object", "null"]
+      },
+      "default": {}
+    }
+  }
+}

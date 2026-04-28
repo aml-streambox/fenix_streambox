@@ -287,6 +287,11 @@ unpack_package() {
 ## $1 package
 build_package() {
 
+	if [ "${FENIX_ROOTFS_ASSEMBLY_ACTIVE:-no}" = "yes" ]; then
+		error_msg "build_package is not allowed during rootfs assembly; build custom packages before rootfs and install them from the local feed"
+		return 1
+	fi
+
 	if [ -z "$1" ]; then
 		echo "usage: $0 package_name"
 		return -1

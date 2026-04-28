@@ -1,0 +1,71 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "aml-audio-hal",
+  "version": "1.0-amlogic-yocto",
+  "summary": "Amlogic audio hardware abstraction library",
+  "license": "AMLOGIC",
+  "source": {
+    "type": "local",
+    "path": "packages/aml-audio-hal",
+    "subdir": "sources"
+  },
+  "patches": [
+    "patches/cmake-rootless-install.patch"
+  ],
+  "build": {
+    "class": "cmake",
+    "env": {
+      "AML_BUILD_DIR": "."
+    },
+    "configure_args": [
+      "-DCMAKE_SYSTEM_NAME=Linux",
+      "-DCMAKE_SYSTEM_PROCESSOR=aarch64",
+      "-DCMAKE_BUILD_TYPE=Release"
+    ]
+  },
+  "dependencies": {
+    "recipes": [
+      "android-liblog",
+      "android-binder",
+      "aml-avsync",
+      "aml-audio-utils",
+      "libexpat1"
+    ]
+  },
+  "outputs": [
+    {
+      "package": "aml-audio-hal",
+      "architecture": "arm64",
+      "section": "libs",
+      "description": "Amlogic Audio HAL library and configuration",
+      "runtime_depends": [
+        "aml-audio-utils",
+        "android-binder",
+        "libexpat1",
+        "aml-avsync"
+      ],
+      "files": [
+        {"from": "usr/lib", "to": "/usr/lib"},
+        {"from": "usr/include/hardware", "to": "/usr/include/hardware"},
+        {"from": "usr/include/system", "to": "/usr/include/system"},
+        {"from": "usr/include/Virtualx_v4.h", "to": "/usr/include/Virtualx_v4.h", "mode": "0644"},
+        {"from": "etc/halaudio", "to": "/etc/halaudio"},
+        {"from": "etc/mixer_paths.xml", "to": "/etc/mixer_paths.xml", "mode": "0644"}
+      ],
+      "sysroot_exports": [
+        {"from": "usr/lib/libaudio_hal.so", "to": "/usr/lib/libaudio_hal.so"},
+        {"from": "usr/lib/libaudio_hal.so.1", "to": "/usr/lib/libaudio_hal.so.1"},
+        {"from": "usr/lib/libaudio_hal.so.1.0", "to": "/usr/lib/libaudio_hal.so.1.0"},
+        {"from": "usr/lib/libHwAudio_dcvdec.so", "to": "/usr/lib/libHwAudio_dcvdec.so"},
+        {"from": "usr/lib/libHwAudio_dtshd.so", "to": "/usr/lib/libHwAudio_dtshd.so"},
+        {"from": "usr/lib/libms12v2.so", "to": "/usr/lib/libms12v2.so"},
+        {"from": "usr/lib/libms12v2.so.1", "to": "/usr/lib/libms12v2.so.1"},
+        {"from": "usr/lib/libms12v2.so.1.0", "to": "/usr/lib/libms12v2.so.1.0"},
+        {"from": "usr/lib/libvorbis-ahal.so", "to": "/usr/lib/libvorbis-ahal.so"},
+        {"from": "usr/include/hardware", "to": "/usr/include/hardware"},
+        {"from": "usr/include/system", "to": "/usr/include/system"},
+        {"from": "usr/include/Virtualx_v4.h", "to": "/usr/include/Virtualx_v4.h"}
+      ]
+    }
+  ]
+}

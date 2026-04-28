@@ -1,0 +1,19 @@
+--- a/Makefile
++++ b/Makefile
+@@ -20,2 +20,2 @@
+-CFLAGS+=-fPIC -O2 -I./include -I./include/speex -I./include/IpcBuffer -I. -I./src $(TOOLCHAIN_NEON_FLAGS) -DNDEBUG -DFIXED_POINT -DRESAMPLE_FORCE_FULL_SINC_TABLE -DEXPORT=
+-LDFLAGS+=-llog -ldl -lrt -lpthread -lstdc++
++CFLAGS+=-fPIC -O2 -I./include -I./include/speex -I./include/IpcBuffer -I. -I./src -I$(STAGING_DIR)/usr/include $(TOOLCHAIN_NEON_FLAGS) -DNDEBUG -DFIXED_POINT -DRESAMPLE_FORCE_FULL_SINC_TABLE -DEXPORT=
++LDFLAGS+=-L$(STAGING_DIR)/usr/lib -llog -ldl -lrt -lpthread -lstdc++
+@@ -36 +36 @@
+-	$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
++	$(CXX) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
+@@ -41 +41 @@
+-	$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
++	$(CXX) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
+@@ -46 +46 @@
+-	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
++	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
+@@ -49 +49 @@
+-	$(CC) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)
++	$(CXX) $(CFLAGS) -shared -o $@ $^ $(LDFLAGS)

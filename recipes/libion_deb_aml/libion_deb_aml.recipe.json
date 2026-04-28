@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libion_deb_aml",
+  "version": "0+f22093164db9e628e3502302a89709bb662f1761",
+  "summary": "Amlogic libion prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for binary payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/libion_deb_aml/archive/f22093164db9e628e3502302a89709bb662f1761.tar.gz",
+    "sha256": "f5a105a7be677e8113996474df3d9b92823cb8f884a587b9975d51d2fd55260c"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "libion-deb-aml",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic libion prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/libion_deb_aml",
+    "version": "f22093164db9e628e3502302a89709bb662f1761",
+    "sha256": "f5a105a7be677e8113996474df3d9b92823cb8f884a587b9975d51d2fd55260c",
+    "license_category": "prebuilt Amlogic userspace library deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture deb payloads rather than a source tree for this library.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until a matching Amlogic libion source release or distro-provided replacement is identified."
+    }
+  }
+}

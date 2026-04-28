@@ -1,0 +1,58 @@
+--- a/Makefile
++++ b/Makefile
+@@ -1,4 +1,6 @@
+ AML_BUILD_DIR?=.
++use_binder?=y
++.DEFAULT_GOAL := all
+ VPATH:=src:src/binder:$(AML_BUILD_DIR)/src
+ PROTO_SRCS=audio_service.grpc.pb.cc audio_service.pb.cc
+ PROTO_OBJS=$(PROTO_SRCS:.cc=.o)
+@@ -52,16 +53,16 @@ PROTOC=$(HOST_DIR)/bin/protoc
+ PROTOC_INC=$(HOST_DIR)/include
+ GRPC_CPP_PLUGIN_PATH=$(HOST_DIR)/bin/grpc_cpp_plugin
+ 
+-CFLAGS += -Wall -fPIC -O2 -I$(PROTOC_INC) -I./include -I. -I./src -I$(AML_BUILD_DIR)/src -I$(AML_BUILD_DIR)
++CFLAGS += -Wall -fPIC -O2 -I$(STAGING_DIR)/usr/include -I$(PROTOC_INC) -I./include -I. -I./src -I$(AML_BUILD_DIR)/src -I$(AML_BUILD_DIR)
+ ifeq ($(aplugin),y)
+ 	CFLAGS+= -DPIC
+ endif
+-CXXFLAGS += -Wall -std=c++14
++CXXFLAGS += -Wall -std=c++17
+ 
+ ifeq ($(use_binder),y)
+-SC_LDFLAGS+=-Wl,--no-as-needed -lbinder -lboost_system -lamaudioutils -llog -ldl -lrt -lpthread -lstdc++ -pthread
+-LDFLAGS+= -Wl,--no-as-needed -lbinder -llog -ldl -lrt -lpthread -lstdc++ -pthread
++SC_LDFLAGS+=-L$(STAGING_DIR)/usr/lib -Wl,--no-as-needed -lbinder -lamaudioutils -llog -ldl -lrt -lpthread -lstdc++ -pthread
++LDFLAGS+= -L$(STAGING_DIR)/usr/lib -Wl,--no-as-needed -lbinder -llog -ldl -lrt -lpthread -lstdc++ -pthread
+ else
+-SC_LDFLAGS+=-Wl,--no-as-needed -lgrpc++_unsecure -lprotobuf -lboost_system -lamaudioutils -llog -ldl -lrt -lpthread -lstdc++ -pthread
+-LDFLAGS+= -Wl,--no-as-needed -llog -ldl -lrt -lpthread -lstdc++ -pthread
++SC_LDFLAGS+=-L$(STAGING_DIR)/usr/lib -Wl,--no-as-needed -lgrpc++_unsecure -lprotobuf -lamaudioutils -llog -ldl -lrt -lpthread -lstdc++ -pthread
++LDFLAGS+= -L$(STAGING_DIR)/usr/lib -Wl,--no-as-needed -llog -ldl -lrt -lpthread -lstdc++ -pthread
+ endif
+@@ -79,7 +80,7 @@ $(AML_BUILD_DIR)/%.pb.o: $(AML_BUILD_DIR)/src/%.pb.cc $(AML_BUILD_DIR)/src/%.pb.h | $(AML_BUILD_DIR)
+ 	$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
+ 
+ $(AML_BUILD_DIR)/%.o: %.cpp | $(AML_BUILD_DIR)
+-	$(CC) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
++	$(CXX) -c $(CFLAGS) $(CXXFLAGS) -o $@ $<
+ 
+ $(AML_BUILD_DIR)/%.o: %.c | $(AML_BUILD_DIR)
+ 	$(CC) -c $(CFLAGS) -o $@ $<
+@@ -87,7 +88,9 @@ $(AML_BUILD_DIR)/%.o: %.c | $(AML_BUILD_DIR)
+ $(AML_BUILD_DIR)/src/audio_service.grpc.pb.cc: $(AML_BUILD_DIR)/src/audio_service.pb.h
++ifneq ($(use_binder),y)
+ audio_server.cpp: $(AML_BUILD_DIR)/src/audio_service.pb.h $(AML_BUILD_DIR)/src/audio_service.grpc.pb.cc
+ audio_client.cpp: $(AML_BUILD_DIR)/src/audio_service.pb.h $(AML_BUILD_DIR)/src/audio_service.grpc.pb.cc
+ audio_if_client.cpp: $(AML_BUILD_DIR)/src/audio_service.pb.h $(AML_BUILD_DIR)/src/audio_service.grpc.pb.cc
++endif
+ 
+ ifeq ($(rm_audioserver),y)
+ obj= libaudio_client.so libamlaudiosetting.so audio_client_test audio_client_test_ac3 halplay hal_capture dap_setting speaker_delay digital_mode test_arc start_arc hal_param hal_dump hal_patch master_vol test_audiosetting
+@@ -180,6 +181,7 @@ $(AML_BUILD_DIR)/audio_client_binder_test: $(TEST_AUDIO_CLIENT_BINDER_OBJS) $(AML_BUILD_DIR)/libaudio_client.so
+ 
+ .PHONY: install
+ install:
++	install -m 644 -D ../files/audioserver.service -t $(TARGET_DIR)/lib/systemd/system/
+ ifneq ($(rm_audioserver),y)
+ 	install -m 755 -D $(AML_BUILD_DIR)/audio_server -t $(TARGET_DIR)/usr/bin/

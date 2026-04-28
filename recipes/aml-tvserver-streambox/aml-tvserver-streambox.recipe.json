@@ -1,0 +1,61 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "aml-tvserver-streambox",
+  "version": "0+6ce5bf4d60c9d49ce0d12c833f550c25bd323c8a",
+  "summary": "Amlogic TV Server Stream Box",
+  "license": "Proprietary",
+  "source": {
+    "type": "git",
+    "uri": "https://github.com/anshi233/aml_tvserver_streambox",
+    "revision": "6ce5bf4d60c9d49ce0d12c833f550c25bd323c8a"
+  },
+  "patches": [
+    "patches/makefile-rootless.patch"
+  ],
+  "build": {
+    "class": "make",
+    "env": {
+      "OUT_DIR": ".",
+      "TVCONFIG_DIR": "/home/anshi/t7_armbian/fenix_t7/packages/aml-tvserver-streambox/sources/tvconfig",
+      "TVSERVER_SERVICE": "/home/anshi/t7_armbian/fenix_t7/packages/aml-tvserver-streambox/files/tvserver.service"
+    }
+  },
+  "dependencies": {
+    "recipes": [
+      "android-liblog",
+      "android-binder",
+      "aml-audio-service"
+    ],
+    "native_tools": ["git", "make"]
+  },
+  "outputs": [
+    {
+      "package": "aml-tvserver-streambox",
+      "architecture": "arm64",
+      "section": "utils",
+      "description": "Amlogic TV Server Stream Box services, clients, and configuration.",
+      "runtime_depends": [
+        "android-binder",
+        "aml-audio-service",
+        "zlib1g",
+        "systemd"
+      ],
+      "files": [
+        {"from": "usr/lib/libtv.so", "to": "/usr/lib/libtv.so"},
+        {"from": "usr/lib/libtvclient.so", "to": "/usr/lib/libtvclient.so"},
+        {"from": "usr/bin/tvservice", "to": "/usr/bin/tvservice", "mode": "0755"},
+        {"from": "usr/bin/hdmiin-demo", "to": "/usr/bin/hdmiin-demo", "mode": "0755"},
+        {"from": "etc/tvconfig", "to": "/etc/tvconfig"},
+        {"from": "lib/systemd/system/tvserver.service", "to": "/lib/systemd/system/tvserver.service", "mode": "0644"}
+      ],
+      "sysroot_exports": [
+        {"from": "usr/lib/libtv.so", "to": "/usr/lib/libtv.so"},
+        {"from": "usr/lib/libtvclient.so", "to": "/usr/lib/libtvclient.so"},
+        {"from": ".fenix-staging/usr/include/tvclient", "to": "/usr/include/tvclient"}
+      ],
+      "services": [
+        {"unit": "tvserver.service", "enable": true}
+      ]
+    }
+  ]
+}

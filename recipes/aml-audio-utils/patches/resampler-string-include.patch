@@ -1,0 +1,9 @@
+--- a/src/resampler.c
++++ b/src/resampler.c
+@@ -22,6 +22,7 @@
+ #include <audio_utils/resampler.h>
+ #include <audio_utils/primitives.h>
+ #include <speex/speex_resampler.h>
++#include <string.h>
+ 
+ #ifdef LOG_NDEBUG

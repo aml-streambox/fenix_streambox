@@ -1,0 +1,11 @@
+[Unit]
+Description=Android Binder servicemanager
+After=dev-binderfs.mount
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/servicemanager
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

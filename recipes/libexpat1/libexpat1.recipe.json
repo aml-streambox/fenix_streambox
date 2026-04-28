@@ -1,0 +1,46 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "libexpat1",
+  "version": "2.6.1",
+  "summary": "Expat XML parser runtime library",
+  "license": "MIT",
+  "source": {
+    "type": "local",
+    "path": "packages/libexpat1/sources/libexpat-R_2_6_1/expat"
+  },
+  "build": {
+    "class": "cmake",
+    "configure_args": [
+      "-DCMAKE_SYSTEM_NAME=Linux",
+      "-DCMAKE_SYSTEM_PROCESSOR=aarch64",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DEXPAT_BUILD_DOCS=OFF",
+      "-DEXPAT_BUILD_EXAMPLES=OFF",
+      "-DEXPAT_BUILD_TESTS=OFF",
+      "-DEXPAT_BUILD_TOOLS=OFF",
+      "-DEXPAT_SHARED_LIBS=ON"
+    ]
+  },
+  "dependencies": {},
+  "outputs": [
+    {
+      "package": "libexpat1",
+      "architecture": "arm64",
+      "section": "libs",
+      "description": "Expat XML parser runtime library and development files for source-built Fenix packages.",
+      "runtime_depends": [],
+      "files": [
+        {"from": "usr/lib", "to": "/usr/lib"},
+        {"from": "usr/include", "to": "/usr/include"}
+      ],
+      "sysroot_exports": [
+        {"from": "usr/lib/libexpat.so", "to": "/usr/lib/libexpat.so"},
+        {"from": "usr/lib/libexpat.so.1", "to": "/usr/lib/libexpat.so.1"},
+        {"from": "usr/lib/libexpat.so.1.9.1", "to": "/usr/lib/libexpat.so.1.9.1"},
+        {"from": "usr/include/expat.h", "to": "/usr/include/expat.h"},
+        {"from": "usr/include/expat_external.h", "to": "/usr/include/expat_external.h"},
+        {"from": "usr/include/expat_config.h", "to": "/usr/include/expat_config.h"}
+      ]
+    }
+  ]
+}

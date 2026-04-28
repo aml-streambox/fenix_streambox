@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fenix.local/schemas/package-group-v1.schema.json",
+  "title": "Fenix package group manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "selectors", "recipes"],
+  "properties": {
+    "schema": {
+      "const": "fenix.package-group.v1"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9+._-]*$"
+    },
+    "selectors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "boards": {
+          "$ref": "#/$defs/stringList"
+        },
+        "distributions": {
+          "$ref": "#/$defs/stringList"
+        },
+        "releases": {
+          "$ref": "#/$defs/stringList"
+        },
+        "image_types": {
+          "$ref": "#/$defs/stringList"
+        },
+        "install_types": {
+          "$ref": "#/$defs/stringList"
+        }
+      },
+      "default": {}
+    },
+    "include": {
+      "$ref": "#/$defs/stringList"
+    },
+    "recipes": {
+      "$ref": "#/$defs/stringList"
+    },
+    "distro_packages": {
+      "$ref": "#/$defs/stringList"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    }
+  }
+}

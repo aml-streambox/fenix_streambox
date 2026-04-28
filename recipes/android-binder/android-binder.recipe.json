@@ -1,0 +1,82 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "android-binder",
+  "version": "1.0-amlogic-yocto",
+  "summary": "Amlogic Android Binder userspace compatibility library",
+  "license": "Apache-2.0",
+  "source": {
+    "type": "local",
+    "path": "packages/android-binder/sources"
+  },
+  "patches": ["patches/install-systemd-service.patch"],
+  "build": {
+    "class": "make",
+    "env": {
+      "BINDER_SERVICE": "/home/anshi/t7_armbian/fenix_t7/recipes/android-binder/files/binder.service"
+    }
+  },
+  "dependencies": {
+    "recipes": ["android-liblog"],
+    "distro_dev": [],
+    "native_tools": ["make"]
+  },
+  "outputs": [
+    {
+      "package": "android-binder",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic Android Binder userspace library, servicemanager, and headers.",
+      "runtime_depends": ["systemd"],
+      "files": [
+        {
+          "from": "usr/lib/libbinder.so",
+          "to": "/usr/lib/libbinder.so"
+        },
+        {
+          "from": "usr/bin/servicemanager",
+          "to": "/usr/bin/servicemanager",
+          "mode": "0755"
+        },
+        {
+          "from": "etc/init.d/S52_binderSmr",
+          "to": "/etc/init.d/S52_binderSmr",
+          "mode": "0755"
+        },
+        {
+          "from": "lib/systemd/system/binder.service",
+          "to": "/lib/systemd/system/binder.service",
+          "mode": "0644"
+        },
+        {
+          "from": ".fenix-staging/usr/include/binder",
+          "to": "/usr/include/binder"
+        },
+        {
+          "from": ".fenix-staging/usr/include/utils",
+          "to": "/usr/include/utils"
+        }
+      ],
+      "sysroot_exports": [
+        {
+          "from": "/usr/lib/libbinder.so",
+          "to": "/usr/lib/libbinder.so"
+        },
+        {
+          "from": "/usr/include/binder",
+          "to": "/usr/include/binder"
+        },
+        {
+          "from": "/usr/include/utils",
+          "to": "/usr/include/utils"
+        }
+      ],
+      "services": [
+        {
+          "unit": "binder.service",
+          "enable": true
+        }
+      ]
+    }
+  ]
+}

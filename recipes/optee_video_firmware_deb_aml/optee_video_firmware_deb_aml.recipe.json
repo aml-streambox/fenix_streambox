@@ -1,0 +1,42 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "optee_video_firmware_deb_aml",
+  "version": "8f9e4b8db03a0bd61748417d0ba99ac3bde0a143",
+  "summary": "Amlogic OP-TEE video firmware prebuilt deb wrapper",
+  "license": "GPL-2.0-or-later; license audit required for firmware payload",
+  "source": {
+    "type": "vendor-blob",
+    "uri": "https://github.com/numbqq/optee_video_firmware_deb_aml/archive/8f9e4b8db03a0bd61748417d0ba99ac3bde0a143.tar.gz",
+    "sha256": "ee374869fd01eeb055ab52f158ebc34bc37f02633c246a5d8f3d20207447278c"
+  },
+  "build": {
+    "class": "vendor-blob"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": []
+  },
+  "outputs": [
+    {
+      "package": "optee-video-firmware-deb-aml",
+      "architecture": "arm64",
+      "section": "firmware",
+      "priority": "optional",
+      "description": "Tracked exception for legacy Amlogic OP-TEE video firmware prebuilt deb payloads.",
+      "runtime_depends": [],
+      "files": []
+    }
+  ],
+  "vendor_blob": {
+    "origin": "https://github.com/numbqq/optee_video_firmware_deb_aml",
+    "version": "8f9e4b8db03a0bd61748417d0ba99ac3bde0a143",
+    "sha256": "ee374869fd01eeb055ab52f158ebc34bc37f02633c246a5d8f3d20207447278c",
+    "license_category": "prebuilt Amlogic OP-TEE video firmware deb; license audit required",
+    "reason_source_unavailable": "Repository contains distro/architecture firmware deb payloads rather than source.",
+    "replacement": {
+      "owner": "fenix-migration",
+      "status": "Keep as temporary exception until firmware provenance and source availability are confirmed."
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "vfm-cap",
+  "version": "0.1.0+151732bc",
+  "summary": "VFM capture out-of-tree kernel module",
+  "license": "GPL-2.0-or-later",
+  "source": {
+    "type": "git",
+    "uri": "https://github.com/aml-streambox/common_drivers.git",
+    "revision": "151732bc99e8235dc0d52585d56287d24a71ae30",
+    "subdir": "drivers/media/vfm_cap"
+  },
+  "build": {
+    "class": "kernel-module",
+    "build_args": []
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": [],
+    "native_tools": ["make"]
+  },
+  "outputs": [
+    {
+      "package": "vfm-cap-modules",
+      "architecture": "arm64",
+      "section": "kernel",
+      "priority": "optional",
+      "description": "VFM capture kernel module",
+      "runtime_depends": ["kmod"],
+      "files": [],
+      "kernel_modules": [
+        {
+          "path": "/lib/modules/${kernel_version}/extra/vfm-cap/vfm_cap.ko",
+          "autoload": "vfm_cap"
+        }
+      ]
+    }
+  ]
+}
