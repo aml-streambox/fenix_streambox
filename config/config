@@ -383,8 +383,8 @@ PACKAGES_URL="http://build.khadas.com/khadas/fenix/packages"
 
 ## U-boot & Linux GitHub URL
 LINUX_SOURCE_URL="${LINUX_SOURCE_URL:-https://github.com/khadas/linux}"
-LINUX_COMMON_DRIVERS_SOURCE_URL="${LINUX_COMMON_DRIVERS_SOURCE_URL:-/home/anshi/t7_armbian/common_drivers-tvpro}"
-UBOOT_SOURCE_URL="${UBOOT_SOURCE_URL:-/home/anshi/t7_armbian/u-boot-tvpro}"
+LINUX_COMMON_DRIVERS_SOURCE_URL="${LINUX_COMMON_DRIVERS_SOURCE_URL:-https://github.com/anshi233/common_drivers_fenix}"
+UBOOT_SOURCE_URL="${UBOOT_SOURCE_URL:-https://github.com/anshi233/uboot_fenix}"
 
 if [[ $DOWNLOAD_MIRROR == china ]] ; then
 	DEBIAN_MIRROR='mirrors.tuna.tsinghua.edu.cn/debian'
