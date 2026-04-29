@@ -30,14 +30,15 @@ UBOOT_IMAGE_FILES="u-boot.bin u-boot.bin.sd.bin"
 UBOOT_FORCE_REBUILD="yes"
 
 case "$LINUX" in
-	mainline|5.15)
+	mainline|5.15|7.1-rc1)
 		KERNEL_COMPILER="aarch64-none-linux-gnu-"
 		KERNEL_COMPILER_PATH="$TOOLCHAINS/gcc-arm-aarch64-none-linux-gnu-mainline/bin"
+		[ "$LINUX_VENDOR_DIR" ] && \
 		LINUX_DIR=$(realpath "$LINUX_VENDOR_DIR")
 		;;
 esac
 
-LINUX_DEFCONFIG_DIR="$LINUX_DIR/arch/arm64/configs"
+[ "$LINUX_DIR" ] && LINUX_DEFCONFIG_DIR="$LINUX_DIR/arch/arm64/configs"
 
 BOOT_SCRIPT_BOARD="s905_autoscript.cmd"
 BOOT_SCRIPT_VENDOR="aml_autoscript.txt"

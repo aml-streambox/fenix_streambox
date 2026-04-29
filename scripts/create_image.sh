@@ -14,6 +14,11 @@ source config/functions/functions
 ######################################################################################
 ## Try to update Fenix
 check_update() {
+	if [ "$FENIX_SKIP_SELF_UPDATE" == "yes" ]; then
+		info_msg "Fenix self-update skipped by FENIX_SKIP_SELF_UPDATE"
+		return 0
+	fi
+
 	cd $ROOT
 	update_git_repo "$PWD" ${FENIX_BRANCH:- t7_v0.1}
 }

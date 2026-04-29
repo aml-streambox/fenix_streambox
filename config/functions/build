@@ -9,6 +9,10 @@
 # config_linux
 # save_linux_config
 
+linux_source_is_local() {
+	[[ "$LINUX_SOURCE_URL" == /* ]]
+}
+
 ## Build U-Boot
 build_uboot() {
 	ret=0
@@ -143,7 +147,17 @@ build_linux() {
 	fi
 
 	cd ${ROOT}
-	if [ ! -d "$LINUX_VENDOR_DIR"/.git ]; then
+	if linux_source_is_local; then
+		if [ ! -d "$LINUX_SOURCE_URL"/.git ]; then
+			error_msg "Local linux path '$LINUX_SOURCE_URL' is not a git repository"
+			return -1
+		fi
+
+		LINUX_VENDOR_DIR=$(realpath "$LINUX_SOURCE_URL")
+		LINUX_DIR=$LINUX_VENDOR_DIR
+		info_msg "Using local linux source tree: '$LINUX_DIR'"
+		info_msg "Skipping linux clone, checkout, and git update for local source"
+	elif [ ! -d "$LINUX_VENDOR_DIR"/.git ]; then
 		info_msg "Linux repository does not exist, clone linux repository('$LINUX_GIT_BRANCH') from '$LINUX_SOURCE_URL'..."
 		## Clone linux from Khadas GitHub
 		git clone $GIT_CLONE_OPTIONS $LINUX_SOURCE_URL -b $LINUX_GIT_BRANCH "$LINUX_VENDOR_DIR"
@@ -173,9 +187,13 @@ build_linux() {
 	fi
 
 	cd "$LINUX_VENDOR_DIR"
-	touch .scmversion
+	if ! linux_source_is_local; then
+		touch .scmversion
+	fi
 
-	if ! git branch | grep "^* $LINUX_GIT_BRANCH$" > /dev/null; then
+	if linux_source_is_local; then
+		:
+	elif ! git branch | grep "^* $LINUX_GIT_BRANCH$" > /dev/null; then
 		if ! git branch | grep "^  $LINUX_GIT_BRANCH$" > /dev/null; then
 			# New branch? Try to fetch it.
 			info_msg "Fetching '$LINUX_GIT_BRANCH' from '$LINUX_SOURCE_URL'..."
@@ -242,7 +260,9 @@ build_linux() {
 	fi
 
 	# Update linux
-	update_git_repo "$LINUX_VENDOR_DIR" "$LINUX_GIT_BRANCH"
+	if ! linux_source_is_local; then
+		update_git_repo "$LINUX_VENDOR_DIR" "$LINUX_GIT_BRANCH"
+	fi
 	# Skip git pull for local common drivers repos
 	if [ -n "$LINUX_COMMON_DRIVERS_GIT_BRANCH" ] && [[ "$LINUX_COMMON_DRIVERS_SOURCE_URL" != /* ]]; then
 		update_git_repo "$LINUX_COMMON_DRIVERS_DIR" "$LINUX_COMMON_DRIVERS_GIT_BRANCH"
@@ -283,6 +303,129 @@ build_linux() {
 	fi
 }
 
+## Build Fenix-compatible linux debs from an already-built local tree
+build_simple_linux_debs() {
+	local kernel_release image_pkgname image_pkgdir dtb_pkgname dtb_pkgdir dtb dtb_alias
+
+	info_msg "Build simple linux debs from local source..."
+
+	cd "$LINUX_DIR"
+	kernel_release=$(make -s ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" kernelrelease)
+	[ -n "$kernel_release" ] || {
+		error_msg "Unable to determine kernel release"
+		return -1
+	}
+
+	[ -f "$LINUX_DIR/arch/arm64/boot/Image" ] || {
+		error_msg "Kernel Image not found: $LINUX_DIR/arch/arm64/boot/Image"
+		return -1
+	}
+	[ -f "$LINUX_DTB" ] || {
+		error_msg "Linux DTB not found: $LINUX_DTB"
+		return -1
+	}
+
+	mkdir -p "$BUILD_DEBS/$VERSION/$KHADAS_BOARD" "$BUILD_IMAGES/.tmp"
+	export PATH=$KERNEL_COMPILER_PATH:$PATH
+
+	image_pkgname="${LINUX_IMAGE_DEB}_${VERSION}_${DISTRIB_ARCH}"
+	image_pkgdir="$BUILD_IMAGES/.tmp/$image_pkgname"
+	rm -rf "$image_pkgdir"
+	mkdir -p "$image_pkgdir/boot" "$image_pkgdir/DEBIAN"
+	cp "$LINUX_DIR/arch/arm64/boot/Image" "$image_pkgdir/boot/vmlinuz-$kernel_release"
+	[ -f "$LINUX_DIR/System.map" ] && cp "$LINUX_DIR/System.map" "$image_pkgdir/boot/System.map-$kernel_release"
+	[ -f "$LINUX_DIR/.config" ] && cp "$LINUX_DIR/.config" "$image_pkgdir/boot/config-$kernel_release"
+
+	make -C "$LINUX_DIR" ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" \
+		INSTALL_MOD_PATH="$image_pkgdir" INSTALL_MOD_STRIP=1 modules_install
+	rm -f "$image_pkgdir/lib/modules/$kernel_release/build" \
+		"$image_pkgdir/lib/modules/$kernel_release/source"
+
+	cat <<-EOF > "$image_pkgdir/DEBIAN/control"
+	Package: $LINUX_IMAGE_DEB
+	Version: $VERSION
+	Architecture: $DISTRIB_ARCH
+	Maintainer: khadas <hello@khadas.com>
+	Installed-Size: 1
+	Section: kernel
+	Priority: optional
+	Provides: linux-image
+	Description: Linux kernel image $kernel_release
+	 This package contains the Linux kernel and modules for Fenix images.
+	EOF
+
+	cat <<-EOF > "$image_pkgdir/DEBIAN/postinst"
+	#!/bin/bash
+	set -e
+	export DEB_MAINT_PARAMS="\$*"
+	export INITRD=Yes
+	test -d /etc/kernel/postinst.d && run-parts --arg="$kernel_release" --arg="/boot/vmlinuz-$kernel_release" /etc/kernel/postinst.d
+	ln -sf vmlinuz-$kernel_release /boot/Image 2> /dev/null || mv /boot/vmlinuz-$kernel_release /boot/Image
+	exit 0
+	EOF
+
+	cat <<-EOF > "$image_pkgdir/DEBIAN/prerm"
+	#!/bin/bash
+	set -e
+	export DEB_MAINT_PARAMS="\$*"
+	export INITRD=Yes
+	test -d /etc/kernel/prerm.d && run-parts --arg="$kernel_release" --arg="/boot/vmlinuz-$kernel_release" /etc/kernel/prerm.d
+	exit 0
+	EOF
+
+	cat <<-EOF > "$image_pkgdir/DEBIAN/postrm"
+	#!/bin/bash
+	set -e
+	export DEB_MAINT_PARAMS="\$*"
+	export INITRD=Yes
+	test -d /etc/kernel/postrm.d && run-parts --arg="$kernel_release" --arg="/boot/vmlinuz-$kernel_release" /etc/kernel/postrm.d
+	exit 0
+	EOF
+
+	chmod 755 "$image_pkgdir/DEBIAN/postinst" "$image_pkgdir/DEBIAN/prerm" "$image_pkgdir/DEBIAN/postrm"
+	fakeroot dpkg-deb -b -Zxz "$image_pkgdir" "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${image_pkgname}.deb"
+	rm -rf "$image_pkgdir"
+
+	dtb_pkgname="${LINUX_IMAGE_DEB/image/dtb}_${VERSION}_${DISTRIB_ARCH}"
+	dtb_pkgdir="$BUILD_IMAGES/.tmp/$dtb_pkgname"
+	rm -rf "$dtb_pkgdir"
+	mkdir -p "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic" "$dtb_pkgdir/DEBIAN"
+	for dtb in "$LINUX_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb; do
+		[ -f "$dtb" ] || continue
+		cp "$dtb" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/"
+	done
+	for dtb_alias in $FENIX_SIMPLE_DTB_ALIASES; do
+		cp "$LINUX_DTB" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/$dtb_alias"
+	done
+	cp "$LINUX_DTB" "$dtb_pkgdir/boot/dtb-$kernel_release/$(basename "$LINUX_DTB")"
+
+	cat <<-EOF > "$dtb_pkgdir/DEBIAN/control"
+	Package: ${LINUX_IMAGE_DEB/image/dtb}
+	Version: $VERSION
+	Architecture: $DISTRIB_ARCH
+	Maintainer: khadas <hello@khadas.com>
+	Installed-Size: 1
+	Section: kernel
+	Priority: optional
+	Provides: linux-dtb
+	Description: Linux device tree blobs $kernel_release
+	 This package contains device tree blobs for Fenix images.
+	EOF
+
+	cat <<-EOF > "$dtb_pkgdir/DEBIAN/postinst"
+	#!/bin/bash
+	set -e
+	cd /boot
+	ln -sfT dtb-$kernel_release dtb 2> /dev/null || mv dtb-$kernel_release dtb
+	echo dtb-$kernel_release > /boot/.dtb.tmp
+	exit 0
+	EOF
+
+	chmod 755 "$dtb_pkgdir/DEBIAN/postinst"
+	fakeroot dpkg-deb -b -Zxz "$dtb_pkgdir" "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${dtb_pkgname}.deb"
+	rm -rf "$dtb_pkgdir"
+}
+
 ## Build linux debs
 build_linux_debs() {
 
@@ -294,6 +437,10 @@ build_linux_debs() {
 
 	# Build linux debs
 	info_msg "Build linux debs..."
+	if [ "$FENIX_SIMPLE_KERNEL_DEB" == "yes" ]; then
+		build_simple_linux_debs
+		return
+	fi
 
 	cd $ROOT
 
