@@ -62,6 +62,10 @@ install_common()
 		install_deb_chroot $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${LINUX_UBOOT_DEB}_${VERSION}-${UBOOT_VER}_${DISTRIB_ARCH}.deb
 	fi
 
+	if [ "$KHADAS_BOARD" = "TVPRO" ] && [ "$LINUX" = "7.1-rc1" ]; then
+		printf '\274\000' > "$ROOTFS_TEMP/boot/fenix-bootcount.bin"
+	fi
+
 	if [ -n "$GPU_VER" ]; then
 		# Install GPU deb in chroot
 		if [ -f $BUILD_DEBS/$VERSION/$KHADAS_BOARD/linux-gpu-mali-${GPU_PLATFORM}_${VERSION}-${GPU_VER}_${DISTRIB_ARCH}.deb ]; then
@@ -588,6 +592,10 @@ prepare_partitions()
 
 	kernel_version=$(ls $ROOTFS_TEMP/lib/modules)
 	execute_in_chroot "/usr/sbin/update-initramfs -u -k $kernel_version"
+	if { [ "$KHADAS_BOARD" == "TVPRO" ] || [ "$KHADAS_BOARD" == "VIM4" ]; } && \
+		[ "${FENIX_REFRESH_RECOVERY_BOOT:-yes}" != "no" ]; then
+		execute_in_chroot "/usr/local/bin/fenix-recovery-refresh --force"
+	fi
 
 	qemu_helper_deactivate "$ROOTFS_TEMP"
 

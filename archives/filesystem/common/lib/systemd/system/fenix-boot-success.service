@@ -1,0 +1,13 @@
+[Unit]
+Description=Mark Fenix boot successful after network is reachable
+Documentation=man:systemd.service(5)
+After=network-online.target ssh.service sshd.service
+Wants=network-online.target
+ConditionPathExists=/boot/fenix-bootcount.bin
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fenix-mark-boot-success
+
+[Install]
+WantedBy=multi-user.target

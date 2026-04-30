@@ -13,6 +13,26 @@ linux_source_is_local() {
 	[[ "$LINUX_SOURCE_URL" == /* ]]
 }
 
+apply_uboot_board_patches() {
+	local patch_dir patch_file
+
+	patch_dir="$ROOT/archives/patches/u-boot/${KHADAS_BOARD,,}"
+	[ -d "$patch_dir" ] || return 0
+
+	for patch_file in "$patch_dir"/*.patch; do
+		[ -f "$patch_file" ] || continue
+		if patch --dry-run --forward --batch -p1 < "$patch_file" >/dev/null 2>&1; then
+			info_msg "Applying u-boot patch: $(basename "$patch_file")"
+			patch --forward --batch -p1 < "$patch_file" || return -1
+		elif patch --dry-run --reverse --batch -p1 < "$patch_file" >/dev/null 2>&1; then
+			info_msg "Skipping already-applied u-boot patch: $(basename "$patch_file")"
+		else
+			error_msg "U-boot patch does not apply cleanly: $(basename "$patch_file")"
+			return -1
+		fi
+	done
+}
+
 ## Build U-Boot
 build_uboot() {
 	ret=0
@@ -101,6 +121,8 @@ build_uboot() {
 	if [[ "$UBOOT_SOURCE_URL" != /* ]]; then
 		update_git_repo "$PWD" "$UBOOT_GIT_BRANCH"
 	fi
+
+	apply_uboot_board_patches || return -1
 
 	info_msg "Build u-boot..."
 
@@ -225,15 +247,7 @@ build_linux() {
 		cd "$LINUX_COMMON_DRIVERS_DIR"
 		# For local repos, re-sync from source on every build
 		if [[ "$LINUX_COMMON_DRIVERS_SOURCE_URL" == /* ]]; then
-			info_msg "Re-syncing linux common drivers from local source: '$LINUX_COMMON_DRIVERS_SOURCE_URL'..."
-			# Fetch to a remote tracking ref, then reset to it
-			git fetch --force "$LINUX_COMMON_DRIVERS_SOURCE_URL" $LINUX_COMMON_DRIVERS_GIT_BRANCH:refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
-			if [ $? -eq 0 ]; then
-				git reset --hard refs/remotes/local_src/$LINUX_COMMON_DRIVERS_GIT_BRANCH
-			else
-				error_msg "Failed to sync linux common drivers from local source"
-				return -1
-			fi
+			info_msg "Using local linux common drivers workspace without git reset: '$LINUX_COMMON_DRIVERS_SOURCE_URL'"
 		fi
 		# Need to fetch common drivers
 		if ! git branch | grep "^* $LINUX_COMMON_DRIVERS_GIT_BRANCH$" > /dev/null; then
@@ -274,7 +288,7 @@ build_linux() {
 	info_msg "Build linux..."
 	echo "${KERNEL_COMPILER} $KERNEL_COMPILER_PATH"
 	export PATH=$KERNEL_COMPILER_PATH:$PATH
-	make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" $LINUX_DEFCONFIG CONFIG_SHELL="bash"
+	make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" $LINUX_DEFCONFIG $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
 	# Merge config fragment if specified
 	if [ -n "$LINUX_DEFCONFIG_FRAGMENT" ]; then
 		FRAGMENT_FILE=""
@@ -296,10 +310,11 @@ build_linux() {
 			warning_msg "Config fragment not found: $LINUX_DEFCONFIG_FRAGMENT"
 		fi
 	fi
+	local linux_dtb_targets="${FENIX_KERNEL_DTB_TARGETS:-dtbs}"
 	if [ "${BUILD_LINUX_DTBS_ONLY:-no}" == "yes" ]; then
-		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" dtbs $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
+		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" $linux_dtb_targets $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
 	else
-		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" Image dtbs  modules $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
+		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" Image $linux_dtb_targets modules $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
 	fi
 }
 
@@ -390,7 +405,8 @@ build_simple_linux_debs() {
 	dtb_pkgdir="$BUILD_IMAGES/.tmp/$dtb_pkgname"
 	rm -rf "$dtb_pkgdir"
 	mkdir -p "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic" "$dtb_pkgdir/DEBIAN"
-	for dtb in "$LINUX_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb; do
+	for dtb in "$LINUX_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb \
+		"$LINUX_COMMON_DRIVERS_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb; do
 		[ -f "$dtb" ] || continue
 		cp "$dtb" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/"
 	done

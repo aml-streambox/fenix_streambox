@@ -1,0 +1,51 @@
+#!/bin/sh
+# Clear U-Boot's ext4 bootcount only after the normal system has networking.
+
+set -eu
+
+COUNTER_FILE=${FENIX_BOOTCOUNT_FILE:-/boot/fenix-bootcount.bin}
+TIMEOUT=${FENIX_BOOT_SUCCESS_TIMEOUT:-90}
+FORCE=0
+
+if [ "${1:-}" = "--force" ]; then
+	FORCE=1
+fi
+
+if [ "$FORCE" -ne 1 ] && grep -qw 'fenix_recovery=1' /proc/cmdline 2>/dev/null; then
+	logger -t fenix-boot-success 'Recovery boot detected; keeping bootcount above limit until manual rollback is complete.' 2>/dev/null || true
+	exit 0
+fi
+
+if [ ! -e "$COUNTER_FILE" ]; then
+	exit 0
+fi
+
+has_network_address() {
+	if ! command -v ip >/dev/null 2>&1; then
+		return 1
+	fi
+	ip -o -4 addr show scope global 2>/dev/null | grep -q .
+}
+
+has_ssh_service() {
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl is-active --quiet ssh 2>/dev/null && return 0
+		systemctl is-active --quiet sshd 2>/dev/null && return 0
+	fi
+	pgrep -x sshd >/dev/null 2>&1
+}
+
+i=0
+while [ "$i" -lt "$TIMEOUT" ]; do
+	if has_network_address && has_ssh_service; then
+		printf '\274\000' > "$COUNTER_FILE"
+		sync "$COUNTER_FILE" 2>/dev/null || sync
+		logger -t fenix-boot-success "Cleared bootcount in $COUNTER_FILE after successful network boot." 2>/dev/null || true
+		exit 0
+	fi
+	i=$((i + 1))
+	sleep 1
+done
+
+printf 'Network/SSH did not become ready; leaving bootcount unchanged.\n' >&2
+exit 1

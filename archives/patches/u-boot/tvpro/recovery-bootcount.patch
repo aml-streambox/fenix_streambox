@@ -1,0 +1,33 @@
+diff --git a/board/khadas/configs/tvpro.h b/board/khadas/configs/tvpro.h
+index e86c781eb3..90ee605343 100644
+--- a/board/khadas/configs/tvpro.h
++++ b/board/khadas/configs/tvpro.h
+@@ -157,6 +157,9 @@
+         "pxeuuid=00000000-0000-0000-0000-000000000000\0"\
+         "bootfile=\0"\
+         "fdtfile=amlogic/" CONFIG_DEFAULT_DEVICE_TREE ".dtb\0" \
++        "bootcmd_recovery=setenv boot_syslinux_conf extlinux/fenix-recovery.conf; run distro_bootcmd\0" \
++        "altbootcmd=run bootcmd_recovery\0" \
++        "bootlimit=2\0" \
+         CONFIG_EXTRA_ENV_SETTINGS_BASE \
+         "silent=1\0"\
+         "loadaddr_kernel=0x01080000\0"\
+diff --git a/board/khadas/defconfigs/tvpro_defconfig b/board/khadas/defconfigs/tvpro_defconfig
+index 2e9609535b..6463b5f297 100644
+--- a/board/khadas/defconfigs/tvpro_defconfig
++++ b/board/khadas/defconfigs/tvpro_defconfig
+@@ -55,6 +55,14 @@ CONFIG_OF_CONTROL=y
+ CONFIG_OF_EMBED=y
+ CONFIG_DEFAULT_DEVICE_TREE="tvpro"
+ # CONFIG_REGMAP is not set
++CONFIG_BOOTCOUNT_LIMIT=y
++CONFIG_BOOTCOUNT_EXT=y
++CONFIG_BOOTCOUNT_BOOTLIMIT=2
++CONFIG_SYS_BOOTCOUNT_EXT_INTERFACE="mmc"
++CONFIG_SYS_BOOTCOUNT_EXT_DEVPART="1:3"
++CONFIG_SYS_BOOTCOUNT_EXT_NAME="/boot/fenix-bootcount.bin"
++CONFIG_SYS_BOOTCOUNT_ADDR=0x02000000
++CONFIG_CMD_EXT4_WRITE=y
+ CONFIG_ADC=y
+ CONFIG_SARADC_MESON_G12A=y
+ CONFIG_CLK=y

@@ -1,0 +1,138 @@
+#!/bin/sh
+# Install the currently bootable, display-disabled kernel/DTB/initrd as the
+# known-good recovery boot slot.
+
+set -eu
+
+MODE=refresh
+ALLOW_DISPLAY=0
+
+usage() {
+	cat >&2 <<'EOF'
+Usage: fenix-recovery-refresh [--init] [--force] [--allow-display-kernel]
+
+  --init                  Create /boot/recovery only when it does not exist.
+  --force                 Replace an existing /boot/recovery slot.
+  --allow-display-kernel  Permit capturing a kernel config with local display
+                          bring-up symbols enabled. This is intentionally off
+                          by default so the recovery slot stays a basic image.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	--init)
+		MODE=init
+		;;
+	--force)
+		MODE=force
+		;;
+	--allow-display-kernel)
+		ALLOW_DISPLAY=1
+		;;
+	-h|--help)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 2
+		;;
+	esac
+	shift
+done
+
+if [ "$MODE" = "init" ] && [ -f /boot/recovery/Image ]; then
+	exit 0
+fi
+
+if [ "$MODE" = "refresh" ] && [ -f /boot/recovery/Image ]; then
+	printf '%s\n' "Recovery slot already exists; use --force to replace it." >&2
+	exit 1
+fi
+
+BOARD=""
+if [ -r /etc/fenix-release ]; then
+	# shellcheck disable=SC1091
+	. /etc/fenix-release
+	BOARD="${BOARD:-}"
+fi
+
+case "$BOARD" in
+TVPRO)
+	DTB_NAME=amlogic-t7-a311d2-tvpro.dtb
+	;;
+VIM4)
+	DTB_NAME=amlogic-t7-a311d2-khadas-vim4.dtb
+	;;
+*)
+	printf 'Unsupported recovery board: %s\n' "${BOARD:-unknown}" >&2
+	exit 1
+	;;
+esac
+
+resolve_path() {
+	if command -v readlink >/dev/null 2>&1; then
+		readlink -f "$1" 2>/dev/null || true
+	else
+		printf '%s\n' "$1"
+	fi
+}
+
+IMAGE_SRC=$(resolve_path /boot/Image)
+INITRD_SRC=$(resolve_path /boot/initrd.img)
+DTB_SRC=$(resolve_path "/boot/dtb/amlogic/$DTB_NAME")
+
+[ -n "$IMAGE_SRC" ] && [ -f "$IMAGE_SRC" ] || { printf 'Missing /boot/Image target\n' >&2; exit 1; }
+[ -n "$INITRD_SRC" ] && [ -f "$INITRD_SRC" ] || { printf 'Missing /boot/initrd.img target\n' >&2; exit 1; }
+[ -n "$DTB_SRC" ] && [ -f "$DTB_SRC" ] || { printf 'Missing /boot/dtb/amlogic/%s target\n' "$DTB_NAME" >&2; exit 1; }
+
+KERNEL_RELEASE=$(basename "$IMAGE_SRC" | sed 's/^vmlinuz-//')
+CONFIG_SRC=/boot/config-$KERNEL_RELEASE
+
+if [ "$ALLOW_DISPLAY" -ne 1 ] && [ -f "$CONFIG_SRC" ]; then
+	for sym in \
+		CONFIG_DRM_MESON_T7_VENDOR \
+		CONFIG_AMLOGIC_COMMON_CLK_T7_DISPLAY \
+		CONFIG_AMLOGIC_DRM \
+		CONFIG_AMLOGIC_MEDIA_MODULE
+	do
+		if grep -Eq "^${sym}=(y|m)$" "$CONFIG_SRC"; then
+			printf 'Refusing to capture display-enabled recovery kernel: %s is set in %s\n' "$sym" "$CONFIG_SRC" >&2
+			printf 'Install a basic display-disabled kernel first, or pass --allow-display-kernel for manual override.\n' >&2
+			exit 1
+		fi
+	done
+elif [ ! -f "$CONFIG_SRC" ]; then
+	printf 'Warning: %s is missing; cannot verify display symbols.\n' "$CONFIG_SRC" >&2
+fi
+
+TMP=/boot/recovery.new.$$
+OLD=/boot/recovery.previous
+
+rm -rf "$TMP"
+mkdir -p "$TMP/dtb/amlogic"
+
+cp "$IMAGE_SRC" "$TMP/Image"
+cp "$INITRD_SRC" "$TMP/initrd.img"
+cp "$DTB_SRC" "$TMP/dtb/amlogic/$DTB_NAME"
+[ -f "$CONFIG_SRC" ] && cp "$CONFIG_SRC" "$TMP/config-$KERNEL_RELEASE"
+
+cat > "$TMP/manifest" <<EOF
+board=$BOARD
+kernel_release=$KERNEL_RELEASE
+image_source=$IMAGE_SRC
+initrd_source=$INITRD_SRC
+dtb_source=$DTB_SRC
+created_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+display_override=$ALLOW_DISPLAY
+EOF
+
+rm -rf "$OLD"
+if [ -d /boot/recovery ]; then
+	mv /boot/recovery "$OLD"
+fi
+mv "$TMP" /boot/recovery
+sync
+
+printf 'Installed recovery slot for %s kernel %s\n' "$BOARD" "$KERNEL_RELEASE"

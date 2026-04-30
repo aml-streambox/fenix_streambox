@@ -290,6 +290,9 @@ build_board_deb() {
 	fi
 
 	systemctl --no-reload enable fenix-zram-config.service fenix-hardware-optimize.service usb-gadget-khadas.service >/dev/null 2>&1
+	if [ "\$BOARD" == "TVPRO" ] || [ "\$BOARD" == "VIM4" ]; then
+		systemctl --no-reload enable fenix-boot-success.service >/dev/null 2>&1 || true
+	fi
 
 	# Setup plymouth
 	case "\$1" in
@@ -314,6 +317,12 @@ build_board_deb() {
 		exit 1
 		;;
 	esac
+
+	if [ "\$1" = "configure" ] && { [ "\$BOARD" == "TVPRO" ] || [ "\$BOARD" == "VIM4" ]; }; then
+		if [ -x /usr/local/bin/fenix-recovery-refresh ]; then
+			/usr/local/bin/fenix-recovery-refresh --init || true
+		fi
+	fi
 
 	exit 0
 	EOF
@@ -382,6 +391,15 @@ build_board_deb() {
 		mkdir -p $pkgdir/boot/extlinux
 		cp $BOOT_SCRIPTS/extlinux/$EXTLINUX_CONF $pkgdir/boot/extlinux/extlinux.conf
 	fi
+	if [ -n "${EXTLINUX_RECOVERY_CONF:-}" ] && [ -f $BOOT_SCRIPTS/extlinux/$EXTLINUX_RECOVERY_CONF ]; then
+		mkdir -p $pkgdir/boot/extlinux
+		cp $BOOT_SCRIPTS/extlinux/$EXTLINUX_RECOVERY_CONF $pkgdir/boot/extlinux/fenix-recovery.conf
+	fi
+
+	# Ensure recovery helpers are executable even when the archive source was
+	# unpacked on a filesystem that did not preserve mode bits.
+	chmod 755 $pkgdir/usr/local/bin/fenix-recovery-refresh 2>/dev/null || true
+	chmod 755 $pkgdir/usr/local/bin/fenix-mark-boot-success 2>/dev/null || true
 
 	# Copy boot environment
 	if [ -f $BOOT_ENV/$BOOT_ENV_FILE ]; then
