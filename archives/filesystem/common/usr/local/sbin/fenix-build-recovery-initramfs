@@ -1,0 +1,356 @@
+#!/bin/sh
+# Build a self-contained recovery initramfs.  The generated /init runs from RAM,
+# starts SSH, and leaves the normal rootfs unmounted until requested manually.
+
+set -eu
+
+usage() {
+	cat >&2 <<'EOF'
+Usage: fenix-build-recovery-initramfs --kernel-release <release> --output <path>
+EOF
+}
+
+KERNEL_RELEASE=
+OUTPUT=
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	--kernel-release)
+		KERNEL_RELEASE=${2:-}
+		shift
+		;;
+	--output)
+		OUTPUT=${2:-}
+		shift
+		;;
+	-h|--help)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 2
+		;;
+	esac
+	shift
+done
+
+[ -n "$KERNEL_RELEASE" ] || { printf 'Missing --kernel-release\n' >&2; exit 2; }
+[ -n "$OUTPUT" ] || { printf 'Missing --output\n' >&2; exit 2; }
+
+BUSYBOX=
+busybox_has_applet() {
+	"$1" --list 2>/dev/null | grep -qx "$2"
+}
+for candidate in /usr/lib/initramfs-tools/bin/busybox /bin/busybox /usr/bin/busybox; do
+	if [ -x "$candidate" ] && busybox_has_applet "$candidate" sh; then
+		BUSYBOX=$candidate
+		break
+	fi
+done
+[ -n "$BUSYBOX" ] || { printf 'Missing usable busybox with sh applet\n' >&2; exit 1; }
+
+DROPBEAR=
+for candidate in /usr/sbin/dropbear /sbin/dropbear; do
+	if [ -x "$candidate" ]; then
+		DROPBEAR=$candidate
+		break
+	fi
+done
+[ -n "$DROPBEAR" ] || { printf 'Missing dropbear; install dropbear-bin\n' >&2; exit 1; }
+
+DROPBEARKEY=
+for candidate in /usr/bin/dropbearkey /usr/sbin/dropbearkey /bin/dropbearkey /sbin/dropbearkey; do
+	if [ -x "$candidate" ]; then
+		DROPBEARKEY=$candidate
+		break
+	fi
+done
+
+TMP=${TMPDIR:-/tmp}/fenix-recovery-initramfs.$$
+ROOT=$TMP/root
+LIST=$TMP/filelist
+
+cleanup() {
+	rm -rf "$TMP"
+}
+trap cleanup EXIT INT TERM
+
+mkdir -p "$ROOT" "$ROOT/bin" "$ROOT/sbin" "$ROOT/usr/bin" "$ROOT/usr/sbin" \
+	"$ROOT/usr/local/sbin" "$ROOT/etc/init.d" "$ROOT/proc" "$ROOT/sys" "$ROOT/dev" \
+	"$ROOT/run" "$ROOT/tmp" "$ROOT/mnt/rootfs" "$ROOT/lib/modules" "$ROOT/var/lib/dhcpcd"
+chmod 1777 "$ROOT/tmp"
+mknod -m 600 "$ROOT/dev/console" c 5 1 2>/dev/null || true
+mknod -m 666 "$ROOT/dev/null" c 1 3 2>/dev/null || true
+mknod -m 666 "$ROOT/dev/tty" c 5 0 2>/dev/null || true
+
+copy_one() {
+	src=$1
+	dst=$ROOT$src
+	[ -e "$src" ] || return 0
+	mkdir -p "$(dirname "$dst")"
+	cp -aL "$src" "$dst"
+}
+
+copy_binary() {
+	src=$1
+	[ -x "$src" ] || return 0
+	copy_one "$src"
+	if command -v ldd >/dev/null 2>&1; then
+		ldd "$src" 2>/dev/null | while read -r a b c rest; do
+			for token in "$a" "$b" "$c" $rest; do
+				case "$token" in
+				/*)
+					[ -e "$token" ] && copy_one "$token"
+					;;
+				esac
+			done
+		done
+	fi
+}
+
+copy_binary "$BUSYBOX"
+cp -a "$BUSYBOX" "$ROOT/bin/busybox"
+
+for applet in sh ash mount umount mkdir rmdir cat echo printf sleep ls dmesg ip udhcpc \
+	modprobe insmod lsmod hostname ps kill reboot poweroff hexdump od blkid switch_root \
+	setsid cttyhack mdev env grep cut sed tr true false sync init mknod; do
+	busybox_has_applet "$BUSYBOX" "$applet" || continue
+	dir=sbin
+	case "$applet" in
+		modprobe|insmod|mdev|reboot|poweroff|udhcpc|blkid|init|mknod) dir=sbin ;;
+		*) dir=bin ;;
+	esac
+	ln -sf /bin/busybox "$ROOT/$dir/$applet"
+done
+
+copy_binary "$DROPBEAR"
+for candidate in /usr/bin/dropbearkey /usr/sbin/dropbearkey /bin/dropbearkey /sbin/dropbearkey; do
+	copy_binary "$candidate"
+done
+for candidate in /usr/bin/dropbearconvert /usr/sbin/dropbearconvert /bin/dropbearconvert /sbin/dropbearconvert; do
+	copy_binary "$candidate"
+done
+
+for candidate in /sbin/e2fsck /usr/sbin/e2fsck /sbin/fsck.ext4 /usr/sbin/fsck.ext4 \
+	/sbin/debugfs /usr/sbin/debugfs /sbin/tune2fs /usr/sbin/tune2fs \
+	/sbin/fsck /usr/sbin/fsck /bin/mount /usr/bin/mount /sbin/modprobe /usr/sbin/modprobe \
+	/sbin/blkid /usr/sbin/blkid /bin/blkid /usr/bin/blkid /sbin/ip /usr/sbin/ip /bin/ip /usr/bin/ip \
+	/sbin/dhcpcd /usr/sbin/dhcpcd; do
+	copy_binary "$candidate"
+done
+copy_one /usr/lib/dhcpcd
+
+for f in /etc/passwd /etc/shadow /etc/group /etc/gshadow /etc/nsswitch.conf /etc/hosts /etc/resolv.conf; do
+	copy_one "$f"
+done
+if [ -f "$ROOT/etc/passwd" ]; then
+	sed -i 's#^root:\([^:]*:\)\([^:]*:\)\([^:]*:\)\([^:]*:\)\([^:]*:\).*#root:\1\2\3\4\5/bin/sh#' "$ROOT/etc/passwd"
+fi
+for f in /lib/*/libnss_files.so* /usr/lib/*/libnss_files.so* /lib/*/libnss_dns.so* /usr/lib/*/libnss_dns.so*; do
+	copy_one "$f"
+done
+
+mkdir -p "$ROOT/etc/dropbear" "$ROOT/root/.ssh"
+for f in /etc/dropbear/dropbear_*_host_key /etc/ssh/ssh_host_*_key /root/.ssh/authorized_keys; do
+	copy_one "$f"
+done
+
+if ! ls "$ROOT"/etc/dropbear/dropbear_*_host_key >/dev/null 2>&1 && [ -n "$DROPBEARKEY" ]; then
+	"$DROPBEARKEY" -t ed25519 -f "$ROOT/etc/dropbear/dropbear_ed25519_host_key" >/dev/null 2>&1 || true
+	"$DROPBEARKEY" -t ecdsa -f "$ROOT/etc/dropbear/dropbear_ecdsa_host_key" >/dev/null 2>&1 || true
+	"$DROPBEARKEY" -t rsa -s 2048 -f "$ROOT/etc/dropbear/dropbear_rsa_host_key" >/dev/null 2>&1 || true
+fi
+
+chmod 700 "$ROOT/root" "$ROOT/root/.ssh"
+chmod 600 "$ROOT"/etc/dropbear/*_host_key "$ROOT"/etc/ssh/ssh_host_*_key "$ROOT/root/.ssh/authorized_keys" 2>/dev/null || true
+
+if [ -d "/lib/modules/$KERNEL_RELEASE" ]; then
+	mkdir -p "$ROOT/lib/modules"
+	cp -a "/lib/modules/$KERNEL_RELEASE" "$ROOT/lib/modules/"
+fi
+
+cat > "$ROOT/sbin/udhcpc.script" <<'EOF'
+#!/bin/sh
+case "$1" in
+	bound|renew)
+		/bin/ip addr flush dev "$interface" 2>/dev/null || true
+		/bin/ip addr add "$ip/${subnet:-24}" dev "$interface"
+		[ -n "${router:-}" ] && /bin/ip route replace default via "$router" dev "$interface" 2>/dev/null || true
+		if [ -n "${dns:-}" ]; then
+			: > /etc/resolv.conf
+			for ns in $dns; do
+				printf 'nameserver %s\n' "$ns" >> /etc/resolv.conf
+			done
+		fi
+		;;
+esac
+EOF
+chmod 755 "$ROOT/sbin/udhcpc.script"
+
+cat > "$ROOT/etc/dhcpcd.conf" <<'EOF'
+hostname
+clientid
+persistent
+option rapid_commit
+option domain_name_servers, domain_name, domain_search, host_name
+option classless_static_routes
+option interface_mtu
+require dhcp_server_identifier
+slaac private
+nohook wpa_supplicant
+EOF
+
+cat > "$ROOT/usr/local/sbin/mount-normal-root" <<'EOF'
+#!/bin/sh
+set -eu
+MODE=${1:-ro}
+ROOTARG=
+for arg in $(cat /proc/cmdline); do
+	case "$arg" in
+	root=*) ROOTARG=${arg#root=} ;;
+	esac
+done
+[ -n "$ROOTARG" ] || { printf 'No root= argument found in /proc/cmdline\n' >&2; exit 1; }
+case "$ROOTARG" in
+	UUID=*) DEV=$(blkid -U "${ROOTARG#UUID=}" 2>/dev/null || true) ;;
+	LABEL=*) DEV=$(blkid -L "${ROOTARG#LABEL=}" 2>/dev/null || true) ;;
+	*) DEV=$ROOTARG ;;
+esac
+[ -n "$DEV" ] || { printf 'Could not resolve %s\n' "$ROOTARG" >&2; exit 1; }
+mkdir -p /mnt/rootfs
+case "$MODE" in
+	ro) mount -t ext4 -o ro "$DEV" /mnt/rootfs ;;
+	rw) mount -t ext4 -o rw "$DEV" /mnt/rootfs ;;
+	*) printf 'Usage: mount-normal-root [ro|rw]\n' >&2; exit 2 ;;
+esac
+printf 'Mounted %s at /mnt/rootfs (%s)\n' "$DEV" "$MODE"
+EOF
+chmod 755 "$ROOT/usr/local/sbin/mount-normal-root"
+
+cat > "$ROOT/usr/local/sbin/fsck-normal-root" <<'EOF'
+#!/bin/sh
+set -eu
+ROOTARG=
+for arg in $(cat /proc/cmdline); do
+	case "$arg" in
+	root=*) ROOTARG=${arg#root=} ;;
+	esac
+done
+[ -n "$ROOTARG" ] || { printf 'No root= argument found in /proc/cmdline\n' >&2; exit 1; }
+case "$ROOTARG" in
+	UUID=*) DEV=$(blkid -U "${ROOTARG#UUID=}" 2>/dev/null || true) ;;
+	LABEL=*) DEV=$(blkid -L "${ROOTARG#LABEL=}" 2>/dev/null || true) ;;
+	*) DEV=$ROOTARG ;;
+esac
+[ -n "$DEV" ] || { printf 'Could not resolve %s\n' "$ROOTARG" >&2; exit 1; }
+if mount | grep -q ' on /mnt/rootfs '; then
+	printf '/mnt/rootfs is mounted; unmount it before fsck.\n' >&2
+	exit 1
+fi
+exec e2fsck -fy "$DEV"
+EOF
+chmod 755 "$ROOT/usr/local/sbin/fsck-normal-root"
+
+cat > "$ROOT/init" <<'EOF'
+#!/bin/busybox sh
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/sbin
+
+cmdline_value() {
+	key=$1
+	for arg in $(cat /proc/cmdline 2>/dev/null); do
+		case "$arg" in
+			"$key"=*) printf '%s' "${arg#*=}"; return 0 ;;
+		esac
+	done
+}
+
+log() {
+	printf '%s\n' "$*" >"$CONSOLE"
+}
+
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || mount -t tmpfs devtmpfs /dev
+mkdir -p /dev/pts /proc /sys /run /tmp /mnt/rootfs
+mount -t devpts devpts /dev/pts 2>/dev/null || true
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs tmpfs /run
+mount -t tmpfs tmpfs /tmp
+mkdir -p /run/dhcpcd /run/dropbear /var/lib/dhcpcd
+hostname fenix-recovery
+
+CONSOLE=/dev/console
+[ -c /dev/ttyS0 ] && CONSOLE=/dev/ttyS0
+
+log ''
+log 'Fenix RAM recovery initramfs'
+log 'Normal rootfs is intentionally not mounted.'
+
+MODPROBE=/usr/sbin/modprobe
+[ -x /sbin/modprobe ] && MODPROBE=/sbin/modprobe
+for mod in meson-gxl stmmac stmmac-platform dwmac-meson dwmac-meson8b; do
+	"$MODPROBE" "$mod" >/dev/null 2>&1 || true
+done
+
+IP=/usr/bin/ip
+[ -x /sbin/ip ] && IP=/sbin/ip
+BOARD=$(cmdline_value khadas_board)
+RECOVERY_IP=$(cmdline_value fenix_recovery_ip)
+RECOVERY_GW=$(cmdline_value fenix_recovery_gw)
+if [ -z "$RECOVERY_IP" ] && [ "$BOARD" = TVPRO ]; then
+	RECOVERY_IP=192.168.12.102/24
+	RECOVERY_GW=${RECOVERY_GW:-192.168.12.1}
+fi
+
+"$IP" link set lo up 2>/dev/null || true
+for iface_path in /sys/class/net/*; do
+	iface=${iface_path##*/}
+	[ "$iface" = lo ] && continue
+	log "Starting network on $iface"
+	"$IP" link set "$iface" up 2>/dev/null || true
+	if command -v dhcpcd >/dev/null 2>&1; then
+		dhcpcd -4 -L -K -t 10 "$iface" >"$CONSOLE" 2>&1 &
+	else
+		udhcpc -i "$iface" -s /sbin/udhcpc.script -q -t 5 -T 3 >"$CONSOLE" 2>&1 &
+	fi
+	if [ -n "$RECOVERY_IP" ]; then
+		(
+			sleep 15
+			if ! "$IP" -4 addr show dev "$iface" 2>/dev/null | grep -q 'inet '; then
+				log "No DHCP address on $iface; using fallback $RECOVERY_IP"
+				"$IP" addr add "$RECOVERY_IP" dev "$iface" 2>/dev/null || true
+				[ -n "$RECOVERY_GW" ] && "$IP" route replace default via "$RECOVERY_GW" dev "$iface" 2>/dev/null || true
+			fi
+		) &
+	fi
+done
+
+log ''
+log 'Recovery helpers:'
+log '  fsck-normal-root       repair the normal ext4 rootfs while unmounted'
+log '  mount-normal-root ro   mount normal rootfs at /mnt/rootfs read-only'
+log '  mount-normal-root rw   mount normal rootfs at /mnt/rootfs read-write'
+log ''
+log 'Starting dropbear SSH on port 22.'
+
+set --
+for key in /etc/dropbear/dropbear_*_host_key; do
+	[ -f "$key" ] && set -- "$@" -r "$key"
+done
+if [ "$#" -gt 0 ]; then
+	dropbear -F -E -p 22 "$@" >"$CONSOLE" 2>&1 &
+else
+	log 'No prebuilt dropbear host keys found; using runtime key generation fallback.'
+	dropbear -F -R -E -p 22 >"$CONSOLE" 2>&1 &
+fi
+log 'Recovery init is ready.'
+
+while true; do
+	sh <"$CONSOLE" >"$CONSOLE" 2>&1 || sleep 5
+done
+EOF
+chmod 755 "$ROOT/init"
+
+( cd "$ROOT" && find . -print0 > "$LIST" && cpio --null -o --format=newc < "$LIST" ) | gzip -9 > "$OUTPUT"
+chmod 644 "$OUTPUT"
+printf 'Built RAM recovery initramfs: %s\n' "$OUTPUT"

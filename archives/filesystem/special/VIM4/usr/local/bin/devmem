@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+
+import mmap
+import os
+import struct
+import sys
+
+
+def usage():
+    print("Usage: devmem ADDRESS [8|16|32] [VALUE]", file=sys.stderr)
+    sys.exit(2)
+
+
+def parse_num(value):
+    if value is None:
+        usage()
+    try:
+        return int(value, 0)
+    except ValueError:
+        usage()
+
+
+def main():
+    if len(sys.argv) < 2 or len(sys.argv) > 4:
+        usage()
+
+    addr = parse_num(sys.argv[1])
+    width = int(sys.argv[2], 0) if len(sys.argv) >= 3 else 32
+    value = parse_num(sys.argv[3]) if len(sys.argv) == 4 else None
+
+    formats = {
+        8: (1, "<B", 0xff),
+        16: (2, "<H", 0xffff),
+        32: (4, "<I", 0xffffffff),
+    }
+    if width not in formats:
+        usage()
+
+    size, fmt, mask = formats[width]
+    page_size = mmap.PAGESIZE
+    page_base = addr & ~(page_size - 1)
+    page_offset = addr - page_base
+    prot = mmap.PROT_READ | (mmap.PROT_WRITE if value is not None else 0)
+    flags = os.O_SYNC | (os.O_RDWR if value is not None else os.O_RDONLY)
+
+    with os.fdopen(os.open("/dev/mem", flags), "r+b" if value is not None else "rb", buffering=0) as mem:
+        mm = mmap.mmap(mem.fileno(), page_offset + size, mmap.MAP_SHARED, prot, offset=page_base)
+        try:
+            if value is not None:
+                value &= mask
+                mm[page_offset:page_offset + size] = struct.pack(fmt, value)
+            else:
+                value = struct.unpack(fmt, mm[page_offset:page_offset + size])[0]
+            print(f"0x{value:0{size * 2}X}")
+        finally:
+            mm.close()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,61 @@
+#!/bin/sh
+# Persist enough early boot state to diagnose failed display/kernel tests.
+
+set -eu
+
+LOG_ROOT=${FENIX_BOOT_LOG_DIR:-/var/log/fenix-boot}
+BOOT_ID=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || date -u +%s)
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+OUT_DIR="$LOG_ROOT/$STAMP-$BOOT_ID"
+
+mkdir -p "$OUT_DIR"
+
+capture_cmd() {
+	name=$1
+	shift
+	{
+		printf '$'
+		printf ' %s' "$@"
+		printf '\n'
+		"$@"
+	} > "$OUT_DIR/$name" 2>&1 || true
+}
+
+cp /proc/cmdline "$OUT_DIR/cmdline.txt" 2>/dev/null || true
+capture_cmd uname.txt uname -a
+capture_cmd mounts.txt mount
+capture_cmd modules.txt lsmod
+capture_cmd systemctl-failed.txt systemctl --no-pager --failed
+capture_cmd dmesg.txt dmesg -T
+capture_cmd dmesg-raw.txt dmesg
+
+if [ -d /sys/fs/pstore ]; then
+	if ! mountpoint -q /sys/fs/pstore 2>/dev/null; then
+		mount -t pstore pstore /sys/fs/pstore 2>/dev/null || true
+	fi
+	if [ -d /sys/fs/pstore ]; then
+		mkdir -p "$OUT_DIR/pstore"
+		for file in /sys/fs/pstore/*; do
+			[ -e "$file" ] || continue
+			cp -a "$file" "$OUT_DIR/pstore/" 2>/dev/null || true
+		done
+	fi
+fi
+
+if command -v journalctl >/dev/null 2>&1; then
+	capture_cmd journal-kernel-current.txt journalctl --no-pager -k -b
+	capture_cmd journal-kernel-previous.txt journalctl --no-pager -k -b -1
+fi
+
+# Keep bounded on eMMC; persistent journal has its own size limit above.
+if command -v find >/dev/null 2>&1; then
+	count=$(find "$LOG_ROOT" -mindepth 1 -maxdepth 1 -type d | wc -l)
+	if [ "$count" -gt 20 ]; then
+		remove=$((count - 20))
+		find "$LOG_ROOT" -mindepth 1 -maxdepth 1 -type d | sort | sed -n "1,${remove}p" | while IFS= read -r old; do
+			rm -rf "$old"
+		done
+	fi
+fi
+
+exit 0

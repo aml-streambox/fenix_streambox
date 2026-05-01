@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+
+import argparse
+import getpass
+import os
+import pathlib
+import shlex
+import sys
+
+import pexpect
+
+
+DEFAULT_TARGET = "root@192.168.12.102"
+DEFAULT_KNOWN_HOSTS = "/tmp/fenix_live_target_known_hosts"
+
+
+def password():
+    value = os.environ.get("FENIX_TARGET_PASSWORD")
+    if value:
+        return value
+    return getpass.getpass("Target SSH password: ")
+
+
+def expect_password(child, passwd, timeout):
+    output = []
+    while True:
+        index = child.expect([
+            r"(?i)password:",
+            r"(?i)are you sure you want to continue connecting",
+            pexpect.EOF,
+            pexpect.TIMEOUT,
+        ], timeout=timeout)
+
+        output.append(child.before)
+        if index == 0:
+            child.sendline(passwd)
+        elif index == 1:
+            child.sendline("yes")
+        elif index == 2:
+            break
+        else:
+            sys.stdout.write("".join(output))
+            raise TimeoutError("target command timed out")
+
+    sys.stdout.write("".join(output))
+    child.close()
+    if child.exitstatus is not None:
+        return child.exitstatus
+    if child.signalstatus is not None:
+        return 128 + child.signalstatus
+    return 1
+
+
+def ssh_args(target):
+    return [
+        "-o", "StrictHostKeyChecking=no",
+        "-o", f"UserKnownHostsFile={DEFAULT_KNOWN_HOSTS}",
+        target,
+    ]
+
+
+def run_remote(target, command, passwd, timeout):
+    child = pexpect.spawn("ssh", ssh_args(target) + [command], encoding="utf-8")
+    return expect_password(child, passwd, timeout)
+
+
+def push_file(target, source, dest, passwd, timeout):
+    child = pexpect.spawn(
+        "scp",
+        [
+            "-o", "StrictHostKeyChecking=no",
+            "-o", f"UserKnownHostsFile={DEFAULT_KNOWN_HOSTS}",
+            str(source),
+            f"{target}:{dest}",
+        ],
+        encoding="utf-8",
+    )
+    return expect_password(child, passwd, timeout)
+
+
+def install_debs(target, debs, passwd, timeout):
+    remote_dir = "/tmp/fenix-live-deploy"
+    rc = run_remote(target, f"mkdir -p {shlex.quote(remote_dir)}", passwd, timeout)
+    if rc:
+        return rc
+
+    remote_paths = []
+    for deb in debs:
+        source = pathlib.Path(deb)
+        if not source.is_file():
+            print(f"Missing deb: {source}", file=sys.stderr)
+            return 2
+        remote_path = f"{remote_dir}/{source.name}"
+        rc = push_file(target, source, remote_path, passwd, timeout)
+        if rc:
+            return rc
+        remote_paths.append(shlex.quote(remote_path))
+
+    return run_remote(target, "dpkg -i " + " ".join(remote_paths), passwd, timeout)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run live commands on a Fenix target over password SSH")
+    parser.add_argument("--target", default=os.environ.get("FENIX_TARGET", DEFAULT_TARGET))
+    parser.add_argument("--timeout", type=int, default=120)
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    run_parser = subparsers.add_parser("run", help="run a shell command on the target")
+    run_parser.add_argument("remote_command")
+
+    push_parser = subparsers.add_parser("push", help="copy one file to the target")
+    push_parser.add_argument("source")
+    push_parser.add_argument("dest")
+
+    install_parser = subparsers.add_parser("install-debs", help="copy debs to target and install them")
+    install_parser.add_argument("debs", nargs="+")
+
+    args = parser.parse_args()
+    passwd = password()
+
+    try:
+        if args.command == "run":
+            rc = run_remote(args.target, args.remote_command, passwd, args.timeout)
+        elif args.command == "push":
+            rc = push_file(args.target, args.source, args.dest, passwd, args.timeout)
+        elif args.command == "install-debs":
+            rc = install_debs(args.target, args.debs, passwd, args.timeout)
+        else:
+            parser.error("unknown command")
+    except TimeoutError as exc:
+        print(exc, file=sys.stderr)
+        return 124
+
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

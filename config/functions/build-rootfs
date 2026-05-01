@@ -125,8 +125,26 @@ install_common()
 	# Premit root login via SSH for the first boot
 	sed -i 's/#\?PermitRootLogin .*/PermitRootLogin yes/' $ROOTFS_TEMP/etc/ssh/sshd_config
 
-	# Enable additional services
-	execute_in_chroot "systemctl --no-reload enable resize2fs.service system-check.service"
+	# Enable additional services. Keep rootfs resizing disabled for TVPRO/T7
+	# bring-up images: aborted early display tests can leave online resize work
+	# interrupted and corrupt the ext4 rootfs.
+	if [ "$KHADAS_BOARD" = "TVPRO" ]; then
+		touch $ROOTFS_TEMP/root/.no_rootfs_resize
+		mkdir -p $ROOTFS_TEMP/etc/modprobe.d
+		cat > $ROOTFS_TEMP/etc/modprobe.d/tvpro-display-manual.conf <<-EOF
+		# Keep the experimental TVPRO display stack manual-only during bring-up.
+		blacklist aml_drm
+		blacklist aml_media
+		blacklist amlogic_power
+		blacklist amlogic_cpuinfo
+		blacklist amlogic_secmon
+		blacklist t7_display_clkc
+		EOF
+		execute_in_chroot "systemctl --no-reload disable resize2fs.service >/dev/null 2>&1 || true"
+		execute_in_chroot "systemctl --no-reload enable system-check.service"
+	else
+		execute_in_chroot "systemctl --no-reload enable resize2fs.service system-check.service"
+	fi
 
 	# Disable repeated messages due to xconsole not being installed.
 	[[ -f $ROOTFS_TEMP/etc/rsyslog.d/50-default.conf ]] && sed '/daemon\.\*\;mail.*/,/xconsole/ s/.*/#&/' -i $ROOTFS_TEMP/etc/rsyslog.d/50-default.conf
@@ -678,7 +696,7 @@ build_rootfs() {
 	ret=0
 	cd ${ROOT}
 
-	if [ "$INSTALL_TYPE" == "EMMC" ]; then
+	if [ "$INSTALL_TYPE" == "EMMC" ] && [ "$KHADAS_BOARD" != "TVPRO" ]; then
 		# firstboot initialization: for 'ROOTFS' partition resize
 		# just for EMMC image.
 		touch $ROOTFS_TEMP/etc/default/FIRSTBOOT

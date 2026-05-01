@@ -275,7 +275,7 @@ PACKAGE_LIST_EXCLUDE="rsyslog"
 DEBOOTSTRAP_LIST=$(echo $DEBOOTSTRAP_LIST | sed -e 's,\\[trn],,g')
 
 # Essential packages
-PACKAGE_LIST="bc cpufrequtils device-tree-compiler fping fake-hwclock psmisc chrony parted dialog \
+PACKAGE_LIST="bc busybox-static cpufrequtils device-tree-compiler dropbear-bin fping fake-hwclock psmisc chrony parted dialog \
 	ncurses-term sysfsutils toilet figlet u-boot-tools usbutils openssh-server nocache debconf-utils \
 	python3-apt make gcc libc6-dev plymouth plymouth-themes"
 

@@ -80,11 +80,9 @@ resolve_path() {
 }
 
 IMAGE_SRC=$(resolve_path /boot/Image)
-INITRD_SRC=$(resolve_path /boot/initrd.img)
 DTB_SRC=$(resolve_path "/boot/dtb/amlogic/$DTB_NAME")
 
 [ -n "$IMAGE_SRC" ] && [ -f "$IMAGE_SRC" ] || { printf 'Missing /boot/Image target\n' >&2; exit 1; }
-[ -n "$INITRD_SRC" ] && [ -f "$INITRD_SRC" ] || { printf 'Missing /boot/initrd.img target\n' >&2; exit 1; }
 [ -n "$DTB_SRC" ] && [ -f "$DTB_SRC" ] || { printf 'Missing /boot/dtb/amlogic/%s target\n' "$DTB_NAME" >&2; exit 1; }
 
 KERNEL_RELEASE=$(basename "$IMAGE_SRC" | sed 's/^vmlinuz-//')
@@ -114,15 +112,20 @@ rm -rf "$TMP"
 mkdir -p "$TMP/dtb/amlogic"
 
 cp "$IMAGE_SRC" "$TMP/Image"
-cp "$INITRD_SRC" "$TMP/initrd.img"
 cp "$DTB_SRC" "$TMP/dtb/amlogic/$DTB_NAME"
 [ -f "$CONFIG_SRC" ] && cp "$CONFIG_SRC" "$TMP/config-$KERNEL_RELEASE"
+
+if ! command -v fenix-build-recovery-initramfs >/dev/null 2>&1; then
+	printf 'Missing fenix-build-recovery-initramfs\n' >&2
+	exit 1
+fi
+fenix-build-recovery-initramfs --kernel-release "$KERNEL_RELEASE" --output "$TMP/initrd.img"
 
 cat > "$TMP/manifest" <<EOF
 board=$BOARD
 kernel_release=$KERNEL_RELEASE
 image_source=$IMAGE_SRC
-initrd_source=$INITRD_SRC
+initrd_source=ram-recovery-generated
 dtb_source=$DTB_SRC
 created_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 display_override=$ALLOW_DISPLAY

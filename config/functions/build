@@ -321,6 +321,7 @@ build_linux() {
 ## Build Fenix-compatible linux debs from an already-built local tree
 build_simple_linux_debs() {
 	local kernel_release image_pkgname image_pkgdir dtb_pkgname dtb_pkgdir dtb dtb_alias
+	local extra_moddir common_ko
 
 	info_msg "Build simple linux debs from local source..."
 
@@ -353,6 +354,14 @@ build_simple_linux_debs() {
 
 	make -C "$LINUX_DIR" ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" \
 		INSTALL_MOD_PATH="$image_pkgdir" INSTALL_MOD_STRIP=1 modules_install
+	extra_moddir="$image_pkgdir/lib/modules/$kernel_release/extra/amlogic"
+	mkdir -p "$extra_moddir"
+	shopt -s globstar nullglob
+	for common_ko in "$LINUX_COMMON_DRIVERS_DIR"/**/*.ko; do
+		cp "$common_ko" "$extra_moddir/"
+	done
+	shopt -u globstar nullglob
+	depmod -b "$image_pkgdir" "$kernel_release"
 	rm -f "$image_pkgdir/lib/modules/$kernel_release/build" \
 		"$image_pkgdir/lib/modules/$kernel_release/source"
 

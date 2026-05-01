@@ -29,7 +29,7 @@ build_board_deb() {
 	Section: kernel
 	Priority: optional
 	Recommends: ${board_deb_dependencies}
-	Depends: bash, linux-base, u-boot-tools, initramfs-tools, fping
+	Depends: bash, linux-base, u-boot-tools, initramfs-tools, fping, busybox-static, dropbear-bin
 	Description: Fenix tweaks for ${DISTRIBUTION}-${DISTRIB_RELEASE} on $KHADAS_BOARD
 	EOF
 
@@ -289,9 +289,10 @@ build_board_deb() {
 		sed -i "s/partitiontype=partition_type=.*/partitiontype=partition_type=\$partition_type/g" /boot/uEnv.txt
 	fi
 
-	systemctl --no-reload enable fenix-zram-config.service fenix-hardware-optimize.service usb-gadget-khadas.service >/dev/null 2>&1
+	systemctl --no-reload enable fenix-zram-config.service fenix-hardware-optimize.service usb-gadget-khadas.service fenix-capture-boot-log.service >/dev/null 2>&1
 	if [ "\$BOARD" == "TVPRO" ] || [ "\$BOARD" == "VIM4" ]; then
 		systemctl --no-reload enable fenix-boot-success.service >/dev/null 2>&1 || true
+		systemctl --no-reload enable serial-getty@ttyS0.service >/dev/null 2>&1 || true
 	fi
 
 	# Setup plymouth
@@ -400,6 +401,8 @@ build_board_deb() {
 	# unpacked on a filesystem that did not preserve mode bits.
 	chmod 755 $pkgdir/usr/local/bin/fenix-recovery-refresh 2>/dev/null || true
 	chmod 755 $pkgdir/usr/local/bin/fenix-mark-boot-success 2>/dev/null || true
+	chmod 755 $pkgdir/usr/local/bin/fenix-capture-boot-log 2>/dev/null || true
+	chmod 755 $pkgdir/usr/local/sbin/fenix-build-recovery-initramfs 2>/dev/null || true
 
 	# Copy boot environment
 	if [ -f $BOOT_ENV/$BOOT_ENV_FILE ]; then

@@ -1,0 +1,13 @@
+[Unit]
+Description=Capture kernel and pstore logs for boot diagnosis
+DefaultDependencies=no
+After=local-fs.target systemd-modules-load.service
+Before=sysinit.target systemd-pstore.service
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fenix-capture-boot-log
+
+[Install]
+WantedBy=sysinit.target
