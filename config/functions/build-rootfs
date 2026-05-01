@@ -130,15 +130,15 @@ install_common()
 	# interrupted and corrupt the ext4 rootfs.
 	if [ "$KHADAS_BOARD" = "TVPRO" ]; then
 		touch $ROOTFS_TEMP/root/.no_rootfs_resize
-		mkdir -p $ROOTFS_TEMP/etc/modprobe.d
-		cat > $ROOTFS_TEMP/etc/modprobe.d/tvpro-display-manual.conf <<-EOF
-		# Keep the experimental TVPRO display stack manual-only during bring-up.
-		blacklist aml_drm
-		blacklist aml_media
-		blacklist amlogic_power
-		blacklist amlogic_cpuinfo
-		blacklist amlogic_secmon
-		blacklist t7_display_clkc
+		mkdir -p $ROOTFS_TEMP/etc/modules-load.d
+		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-display.conf <<-EOF
+		# Load the validated TVPRO/T7 HDMI scanout stack on normal boot.
+		t7_display_clkc
+		amlogic_secmon
+		amlogic_cpuinfo
+		amlogic_power
+		aml_media
+		aml_drm
 		EOF
 		execute_in_chroot "systemctl --no-reload disable resize2fs.service >/dev/null 2>&1 || true"
 		execute_in_chroot "systemctl --no-reload enable system-check.service"
