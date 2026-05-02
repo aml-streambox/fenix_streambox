@@ -438,6 +438,20 @@ build_board_deb() {
 		# Use patched hciattach
 		cp -r $ROOT/archives/hwpacks/bluez/hciattach-$DISTRIB_ARCH $pkgdir/usr/local/bin/hciattach
 
+		if [[ "$KHADAS_BOARD" == "TVPRO" ]]; then
+			cp -f $pkgdir/lib/firmware/brcm/brcmfmac4359-sdio_ap6398s.bin $pkgdir/lib/firmware/brcm/brcmfmac4359-sdio.ap6398s.bin
+			cp -f $pkgdir/lib/firmware/brcm/brcmfmac4359-sdio_ap6398s.txt $pkgdir/lib/firmware/brcm/brcmfmac4359-sdio.ap6398s.txt
+			cp -f $pkgdir/lib/firmware/brcm/fw_bcm43456c5_ag.bin $pkgdir/lib/firmware/brcm/brcmfmac43456-sdio.bin
+			cp -f $pkgdir/lib/firmware/brcm/fw_bcm43456c5_ag.bin $pkgdir/lib/firmware/brcm/brcmfmac43456-sdio.ap6398s.bin
+			cp -f $pkgdir/lib/firmware/brcm/nvram_ap6255.txt $pkgdir/lib/firmware/brcm/brcmfmac43456-sdio.txt
+			cp -f $pkgdir/lib/firmware/brcm/nvram_ap6255.txt $pkgdir/lib/firmware/brcm/brcmfmac43456-sdio.ap6398s.txt
+			cp -f $pkgdir/lib/firmware/brcm/BCM4359C0_ap6398s.hcd $pkgdir/lib/firmware/brcm/BCM4359C0.hcd
+		elif [[ "$KHADAS_BOARD" == "VIM4" ]]; then
+			cp -f $pkgdir/lib/firmware/brcm/fw_bcm43752a2_ag.bin $pkgdir/lib/firmware/brcm/brcmfmac43752-sdio.ap6275s.bin
+			cp -f $pkgdir/lib/firmware/brcm/nvram_ap6275s.txt $pkgdir/lib/firmware/brcm/brcmfmac43752-sdio.ap6275s.txt
+			cp -f $pkgdir/lib/firmware/brcm/clm_bcm43752a2_ag.blob $pkgdir/lib/firmware/brcm/brcmfmac43752-sdio.ap6275s.clm_blob
+		fi
+
 		# FIXME AP6359SA and AP6398S use the same chipid and rev, so can't identify in DHD driver.
 		# But AP6359SA only on VIM2 V12, and AP6398S only on Edge, VIM2 V14 and VIM3, so modify firmware here.
 		if [[ "$KHADAS_BOARD" == "Edge" ]] || [[ "$KHADAS_BOARD" =~ "VIM3" ]]; then
