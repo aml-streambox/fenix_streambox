@@ -140,6 +140,12 @@ install_common()
 		aml_media
 		aml_drm
 		EOF
+		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-audio.conf <<-EOF
+		# Load the TVPRO/T7 ASoC stack before the GNOME user session starts.
+		amlogic-snd-codec-dummy
+		amlogic-snd-soc
+		amlogic-snd-codec-tl1
+		EOF
 		mkdir -p $ROOTFS_TEMP/etc/systemd/logind.conf.d $ROOTFS_TEMP/etc/dconf/db/local.d
 		cat > $ROOTFS_TEMP/etc/systemd/logind.conf.d/tvpro-no-suspend.conf <<-EOF
 		[Login]

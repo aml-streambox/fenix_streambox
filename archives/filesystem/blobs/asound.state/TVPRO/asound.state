@@ -1,0 +1,663 @@
+state.AMLAUGESOUND {
+	control.1 {
+		iface MIXER
+		name 'TDM MCLK Fine Setting'
+		value 12288000
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 2000000'
+		}
+	}
+	control.2 {
+		iface MIXER
+		name 'TDMOUT_B GAIN'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 255'
+		}
+	}
+	control.3 {
+		iface MIXER
+		name 'TDMOUT_B Mute'
+		value true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.4 {
+		iface MIXER
+		name 'TDMIN_B source select'
+		value acodec_adc
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 tdmin_a
+			item.1 tdmin_b
+			item.2 tdmin_c
+			item.3 tdmin_d
+			item.4 NULL
+			item.5 hdmirx_b
+			item.6 hdmirx
+			item.7 acodec_adc
+			item.8 NULL
+			item.9 NULL
+			item.10 NULL
+			item.11 NULL
+			item.12 tdmout_a
+			item.13 tdmout_b
+			item.14 tdmout_c
+			item.15 tdmout_d
+		}
+	}
+	control.5 {
+		iface MIXER
+		name 'TDMOUT_B Lane0 Mute'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.6 {
+		iface MIXER
+		name 'TDMOUT_B Lane1 Mute'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.7 {
+		iface MIXER
+		name 'TDMOUT_B Lane2 Mute'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.8 {
+		iface MIXER
+		name 'TDMOUT_B Lane3 Mute'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.9 {
+		iface MIXER
+		name 'TDMOUT_B Software Gain'
+		value 100
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 100'
+		}
+	}
+	control.10 {
+		iface MIXER
+		name 'PGA IN Gain'
+		value.0 16
+		value.1 16
+		comment {
+			access 'read write'
+			type INTEGER
+			count 2
+			range '0 - 31'
+			dbmin -9999999
+			dbmax 6550
+			dbvalue.0 2800
+			dbvalue.1 2800
+		}
+	}
+	control.11 {
+		iface MIXER
+		name 'ADC Digital Capture Volume'
+		value.0 80
+		value.1 80
+		comment {
+			access 'read write'
+			type INTEGER
+			count 2
+			range '0 - 127'
+			dbmin -9999999
+			dbmax 18000
+			dbvalue.0 375
+			dbvalue.1 375
+		}
+	}
+	control.12 {
+		iface MIXER
+		name 'DAC Digital Playback Volume'
+		value.0 251
+		value.1 251
+		comment {
+			access 'read write'
+			type INTEGER
+			count 2
+			range '0 - 255'
+			dbmin -9999999
+			dbmax 375
+			dbvalue.0 -1125
+			dbvalue.1 -1125
+		}
+	}
+	control.13 {
+		iface MIXER
+		name 'DAC Extra Digital Gain'
+		value '0dB'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 '0dB'
+			item.1 '6dB'
+			item.2 '12dB'
+			item.3 '18dB'
+		}
+	}
+	control.14 {
+		iface MIXER
+		name 'DAC SOURCE SELECT'
+		value Lane0
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Lane0
+			item.1 Lane1
+			item.2 Lane2
+			item.3 Lane3
+		}
+	}
+	control.15 {
+		iface MIXER
+		name 'SPDIFIN audio samplerate'
+		value N/A
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 N/A
+			item.1 '32000'
+			item.2 '44100'
+			item.3 '48000'
+			item.4 '88200'
+			item.5 '96000'
+			item.6 '176400'
+			item.7 '192000'
+		}
+	}
+	control.16 {
+		iface MIXER
+		name 'SPDIFIN Audio Type'
+		value LPCM
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 LPCM
+			item.1 AC3
+			item.2 EAC3
+			item.3 DTS
+			item.4 DTS-HD
+			item.5 TRUEHD
+			item.6 PAUSE
+		}
+	}
+	control.17 {
+		iface MIXER
+		name 'Audio spdif format'
+		value 'Stereo PCM'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'Stereo PCM'
+			item.1 'DTS RAW Mode'
+			item.2 'Dolby Digital'
+			item.3 DTS
+			item.4 'Dolby Digital Plus'
+			item.5 DTS-HD
+			item.6 'Multi-channel LPCM'
+			item.7 'Dolby TrueHD'
+			item.8 'DTS-HD MA'
+			item.9 'HIGH SR Stereo LPCM'
+			item.10 'Dolby Digital(Layout B)'
+			item.11 'One Bit Audio'
+		}
+	}
+	control.18 {
+		iface MIXER
+		name 'Audio spdif mute'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.19 {
+		iface MIXER
+		name 'Audio spdifin source'
+		value 'spdifin pad'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'spdifin pad'
+			item.1 spdifout
+			item.2 N/A
+			item.3 HDMIRX
+		}
+	}
+	control.20 {
+		iface MIXER
+		name 'spdif out channel status'
+		value 34603264
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - -1'
+		}
+	}
+	control.21 {
+		iface MIXER
+		name 'SPDIF CLK Fine Setting'
+		value 6144000
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 2000000'
+		}
+	}
+	control.22 {
+		iface MIXER
+		name 'Audio spdif_b mute'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.23 {
+		iface MIXER
+		name 'Audio spdif_b format'
+		value 'Stereo PCM'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'Stereo PCM'
+			item.1 'DTS RAW Mode'
+			item.2 'Dolby Digital'
+			item.3 DTS
+			item.4 'Dolby Digital Plus'
+			item.5 DTS-HD
+			item.6 'Multi-channel LPCM'
+			item.7 'Dolby TrueHD'
+			item.8 'DTS-HD MA'
+			item.9 'HIGH SR Stereo LPCM'
+			item.10 'Dolby Digital(Layout B)'
+			item.11 'One Bit Audio'
+		}
+	}
+	control.24 {
+		iface MIXER
+		name 'SPDIF_B CLK Fine Setting'
+		value 6144000
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 2000000'
+		}
+	}
+	control.25 {
+		iface MIXER
+		name 'spdif_b out channel status'
+		value 34603264
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - -1'
+		}
+	}
+	control.26 {
+		iface MIXER
+		name 'Linein left switch'
+		value AIL1
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 None
+			item.1 AIL1
+			item.2 AIL2
+			item.3 AIL3
+		}
+	}
+	control.27 {
+		iface MIXER
+		name 'Linein right switch'
+		value AIR1
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 None
+			item.1 AIR1
+			item.2 AIR2
+			item.3 AIR3
+		}
+	}
+	control.28 {
+		iface MIXER
+		name 'Lineout 1 left switch'
+		value LO1L_SEL_DACL
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 None
+			item.1 LO1L_SEL_INL
+			item.2 LO1L_SEL_DACL
+			item.3 Reserved
+			item.4 LO1L_SEL_DACR_INV
+		}
+	}
+	control.29 {
+		iface MIXER
+		name 'Lineout 1 right switch'
+		value LO1R_SEL_DACR
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 None
+			item.1 LO1R_SEL_INR
+			item.2 LO1R_SEL_DACR
+			item.3 Reserved
+			item.4 LO1R_SEL_DACL_INV
+		}
+	}
+	control.30 {
+		iface MIXER
+		name 'Lineout 2 left switch'
+		value LO2L_SEL_DAC2L
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 None
+			item.1 LO2L_SEL_INL
+			item.2 LO2L_SEL_DAC2L
+			item.3 Reserved
+			item.4 LO2L_SEL_DAC2R_INV
+		}
+	}
+	control.31 {
+		iface MIXER
+		name 'Lineout 2 right switch'
+		value LO2R_SEL_DAC2R
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 None
+			item.1 LO2R_SEL_INR
+			item.2 LO2R_SEL_DAC2R
+			item.3 Reserved
+			item.4 LO2R_SEL_DAC2L_INV
+		}
+	}
+	control.32 {
+		iface PCM
+		name 'SPDIFIN Channel Status'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 4294967295'
+		}
+	}
+	control.33 {
+		iface PCM
+		name 'SPDIFOUT Lane0 Left Channel Swap'
+		value 'Swap To CH0'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'Swap To CH0'
+			item.1 'Swap To CH1'
+			item.2 'Swap To CH2'
+			item.3 'Swap To CH3'
+			item.4 'Swap To CH4'
+			item.5 'Swap To CH5'
+			item.6 'Swap To CH6'
+			item.7 'Swap To CH7'
+		}
+	}
+	control.34 {
+		iface PCM
+		name 'SPDIFOUT Lane0 Right Channel Swap'
+		value 'Swap To CH1'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'Swap To CH0'
+			item.1 'Swap To CH1'
+			item.2 'Swap To CH2'
+			item.3 'Swap To CH3'
+			item.4 'Swap To CH4'
+			item.5 'Swap To CH5'
+			item.6 'Swap To CH6'
+			item.7 'Swap To CH7'
+		}
+	}
+	control.35 {
+		iface PCM
+		name 'SPDIFOUT Mixer Channel'
+		value 'Disable Mix'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'Disable Mix'
+			item.1 'Lane0 Mix Left and Right Channel'
+		}
+	}
+	control.36 {
+		iface PCM
+		name 'SPDIFOUT Channel Status'
+		value 34603264
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 4294967295'
+		}
+	}
+	control.37 {
+		iface MIXER
+		name 'tdmout_c binv set'
+		value '0'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 '0'
+			item.1 '1'
+		}
+	}
+	control.38 {
+		iface MIXER
+		name 'DTV clk force MPLL'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.39 {
+		iface MIXER
+		name 'Audio HAL Format'
+		value PCM
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 PCM
+			item.1 DTS_EXPRESS
+			item.2 DOLBY_DIGITAL
+			item.3 DTS
+			item.4 DOLBY_DIGITAL_PLUS
+			item.5 DTS_HD
+			item.6 'MULTI_CHANNEL PCM'
+			item.7 DOLBY_TRUEHD
+			item.8 DTS_HD_MA
+			item.9 'HIFI PCM'
+			item.10 DOLBY_AC4
+			item.11 DOLBY_MAT
+			item.12 DOLBY_DDP_ATMOS
+			item.13 DOLBY_THD_ATMOS
+			item.14 DOLBY_MAT_ATMOS
+			item.15 DOLBY_AC4_ATMOS
+			item.16 DTS_HP
+			item.17 DOLBY_DDP_ATMOS_PROMPT_ON_ATMOS
+			item.18 DOLBY_THD_ATMOS_PROMPT_ON_ATMOS
+			item.19 DOLBY_MAT_ATMOS_PROMPT_ON_ATMOS
+			item.20 DOLBY_AC4_ATMOS_PROMPT_ON_ATMOS
+		}
+	}
+	control.40 {
+		iface MIXER
+		name 'Audio Digital Mode'
+		value AML_HAL_PCM
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 AML_HAL_PCM
+			item.1 AML_HAL_DD
+			item.2 AML_HAL_AUTO
+			item.3 AML_HAL_BYPASS
+			item.4 AML_HAL_DDP
+		}
+	}
+	control.41 {
+		iface MIXER
+		name 'Audio DRC Control'
+		value 3
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 6554402'
+		}
+	}
+	control.42 {
+		iface MIXER
+		name 'Audio Output Select'
+		value HDMI
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 CVBS
+			item.1 HDMI
+			item.2 SPDIF
+		}
+	}
+	control.43 {
+		iface MIXER
+		name 'AML chip id'
+		value '36'
+		comment {
+			access 'read write'
+			type BYTES
+			count 1
+		}
+	}
+	control.44 {
+		iface MIXER
+		name 'HDMITX Audio Source Select'
+		value Tdm_B
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Spdif
+			item.1 Spdif_b
+			item.2 Tdm_A
+			item.3 Tdm_B
+			item.4 Tdm_C
+		}
+	}
+	control.45 {
+		iface MIXER
+		name 'Audio I2S to HDMITX Format'
+		value 'Stereo PCM'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'Stereo PCM'
+			item.1 'DTS RAW Mode'
+			item.2 'Dolby Digital'
+			item.3 DTS
+			item.4 'Dolby Digital Plus'
+			item.5 DTS-HD
+			item.6 'Multi-channel LPCM'
+			item.7 'Dolby TrueHD'
+			item.8 'DTS-HD MA'
+			item.9 'HIGH SR Stereo LPCM'
+			item.10 'Dolby Digital(Layout B)'
+			item.11 'One Bit Audio'
+		}
+	}
+	control.46 {
+		iface MIXER
+		name 'Audio I2S to HDMITX Mask'
+		value 1
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 15'
+		}
+	}
+	control.47 {
+		iface MIXER
+		name 'AI Sort Result'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 0'
+		}
+	}
+}
