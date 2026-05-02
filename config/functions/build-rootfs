@@ -140,6 +140,30 @@ install_common()
 		aml_media
 		aml_drm
 		EOF
+		mkdir -p $ROOTFS_TEMP/etc/systemd/logind.conf.d $ROOTFS_TEMP/etc/dconf/db/local.d
+		cat > $ROOTFS_TEMP/etc/systemd/logind.conf.d/tvpro-no-suspend.conf <<-EOF
+		[Login]
+		IdleAction=ignore
+		HandlePowerKey=ignore
+		HandleSuspendKey=ignore
+		HandleHibernateKey=ignore
+		HandleLidSwitch=ignore
+		HandleLidSwitchExternalPower=ignore
+		EOF
+		cat > $ROOTFS_TEMP/etc/dconf/db/local.d/00-tvpro-no-suspend <<-EOF
+		[org/gnome/desktop/session]
+		idle-delay=uint32 0
+
+		[org/gnome/settings-daemon/plugins/power]
+		sleep-inactive-ac-type='nothing'
+		sleep-inactive-ac-timeout=0
+		sleep-inactive-battery-type='nothing'
+		sleep-inactive-battery-timeout=0
+		idle-dim=false
+		power-button-action='nothing'
+		EOF
+		execute_in_chroot "systemctl --no-reload mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true"
+		execute_in_chroot "if command -v dconf >/dev/null 2>&1; then dconf update; fi"
 		execute_in_chroot "systemctl --no-reload disable resize2fs.service >/dev/null 2>&1 || true"
 		execute_in_chroot "systemctl --no-reload enable system-check.service"
 	else
