@@ -162,6 +162,27 @@ install_common()
 		idle-dim=false
 		power-button-action='nothing'
 		EOF
+		if [ "$DISTRIB_TYPE" = "gnome" ]; then
+			local gdm_conf="$ROOTFS_TEMP/etc/gdm3/custom.conf"
+
+			mkdir -p "$ROOTFS_TEMP/etc/gdm3"
+			[ -f "$gdm_conf" ] || printf '[daemon]\n' > "$gdm_conf"
+			grep -q '^\[daemon\]' "$gdm_conf" || sed -i '1i [daemon]' "$gdm_conf"
+			for gdm_setting in \
+				'WaylandEnable=true' \
+				'AutomaticLoginEnable=true' \
+				'AutomaticLogin=khadas'
+			do
+				local gdm_key="${gdm_setting%%=*}"
+
+				if grep -q "^#\?${gdm_key}=" "$gdm_conf"; then
+					sed -i "s/^#\?${gdm_key}=.*/${gdm_setting}/" "$gdm_conf"
+				else
+					sed -i "/^\[daemon\]/a ${gdm_setting}" "$gdm_conf"
+				fi
+			done
+			execute_in_chroot "systemctl --no-reload set-default graphical.target >/dev/null 2>&1 || true"
+		fi
 		execute_in_chroot "systemctl --no-reload mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true"
 		execute_in_chroot "if command -v dconf >/dev/null 2>&1; then dconf update; fi"
 		execute_in_chroot "systemctl --no-reload disable resize2fs.service >/dev/null 2>&1 || true"
