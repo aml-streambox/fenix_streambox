@@ -88,19 +88,35 @@ DTB_SRC=$(resolve_path "/boot/dtb/amlogic/$DTB_NAME")
 KERNEL_RELEASE=$(basename "$IMAGE_SRC" | sed 's/^vmlinuz-//')
 CONFIG_SRC=/boot/config-$KERNEL_RELEASE
 
+RECOVERY_CONF=/boot/extlinux/fenix-recovery.conf
+
+recovery_blacklists_module() {
+	[ -f "$RECOVERY_CONF" ] || return 1
+	tr ' ' '\n' < "$RECOVERY_CONF" | sed -n 's/^module_blacklist=//p' | tr ',' '\n' | grep -qx "$1"
+}
+
+check_display_symbol() {
+	sym=$1
+	module=$2
+
+	if grep -Eq "^${sym}=y$" "$CONFIG_SRC"; then
+		printf 'Refusing to capture display-enabled recovery kernel: %s is built in %s\n' "$sym" "$CONFIG_SRC" >&2
+		printf 'Install a basic display-disabled kernel first, or pass --allow-display-kernel for manual override.\n' >&2
+		exit 1
+	fi
+
+	if grep -Eq "^${sym}=m$" "$CONFIG_SRC" && ! recovery_blacklists_module "$module"; then
+		printf 'Refusing to capture recovery kernel: %s is modular but %s does not blacklist %s\n' "$sym" "$RECOVERY_CONF" "$module" >&2
+		printf 'Add the recovery module_blacklist entry, or pass --allow-display-kernel for manual override.\n' >&2
+		exit 1
+	fi
+}
+
 if [ "$ALLOW_DISPLAY" -ne 1 ] && [ -f "$CONFIG_SRC" ]; then
-	for sym in \
-		CONFIG_DRM_MESON_T7_VENDOR \
-		CONFIG_AMLOGIC_COMMON_CLK_T7_DISPLAY \
-		CONFIG_AMLOGIC_DRM \
-		CONFIG_AMLOGIC_MEDIA_MODULE
-	do
-		if grep -Eq "^${sym}=(y|m)$" "$CONFIG_SRC"; then
-			printf 'Refusing to capture display-enabled recovery kernel: %s is set in %s\n' "$sym" "$CONFIG_SRC" >&2
-			printf 'Install a basic display-disabled kernel first, or pass --allow-display-kernel for manual override.\n' >&2
-			exit 1
-		fi
-	done
+	check_display_symbol CONFIG_DRM_MESON_T7_VENDOR meson_t7_vendor
+	check_display_symbol CONFIG_AMLOGIC_COMMON_CLK_T7_DISPLAY t7_display_clkc
+	check_display_symbol CONFIG_AMLOGIC_DRM aml_drm
+	check_display_symbol CONFIG_AMLOGIC_MEDIA_MODULE aml_media
 elif [ ! -f "$CONFIG_SRC" ]; then
 	printf 'Warning: %s is missing; cannot verify display symbols.\n' "$CONFIG_SRC" >&2
 fi
