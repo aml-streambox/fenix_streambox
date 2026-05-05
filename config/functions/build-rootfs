@@ -130,7 +130,7 @@ install_common()
 	# interrupted and corrupt the ext4 rootfs.
 	if [ "$KHADAS_BOARD" = "TVPRO" ]; then
 		touch $ROOTFS_TEMP/root/.no_rootfs_resize
-		mkdir -p $ROOTFS_TEMP/etc/modules-load.d
+		mkdir -p $ROOTFS_TEMP/etc/modules-load.d $ROOTFS_TEMP/etc/modprobe.d
 		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-display.conf <<-EOF
 		# Load the validated TVPRO/T7 HDMI scanout stack on normal boot.
 		t7_display_clkc
@@ -140,11 +140,11 @@ install_common()
 		aml_media
 		aml_drm
 		EOF
-		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-audio.conf <<-EOF
-		# Load the TVPRO/T7 ASoC stack before the GNOME user session starts.
-		amlogic-snd-codec-dummy
-		amlogic-snd-soc
-		amlogic-snd-codec-tl1
+		cat > $ROOTFS_TEMP/etc/modprobe.d/tvpro-t7-audio-blacklist.conf <<-EOF
+		# Keep the unstable TVPRO/T7 ASoC stack from being auto-probed by desktop audio services.
+		blacklist amlogic-snd-codec-dummy
+		blacklist amlogic-snd-soc
+		blacklist amlogic-snd-codec-tl1
 		EOF
 		mkdir -p $ROOTFS_TEMP/etc/systemd/logind.conf.d $ROOTFS_TEMP/etc/dconf/db/local.d
 		cat > $ROOTFS_TEMP/etc/systemd/logind.conf.d/tvpro-no-suspend.conf <<-EOF
@@ -168,27 +168,6 @@ install_common()
 		idle-dim=false
 		power-button-action='nothing'
 		EOF
-		if [ "$DISTRIB_TYPE" = "gnome" ]; then
-			local gdm_conf="$ROOTFS_TEMP/etc/gdm3/custom.conf"
-
-			mkdir -p "$ROOTFS_TEMP/etc/gdm3"
-			[ -f "$gdm_conf" ] || printf '[daemon]\n' > "$gdm_conf"
-			grep -q '^\[daemon\]' "$gdm_conf" || sed -i '1i [daemon]' "$gdm_conf"
-			for gdm_setting in \
-				'WaylandEnable=true' \
-				'AutomaticLoginEnable=true' \
-				'AutomaticLogin=khadas'
-			do
-				local gdm_key="${gdm_setting%%=*}"
-
-				if grep -q "^#\?${gdm_key}=" "$gdm_conf"; then
-					sed -i "s/^#\?${gdm_key}=.*/${gdm_setting}/" "$gdm_conf"
-				else
-					sed -i "/^\[daemon\]/a ${gdm_setting}" "$gdm_conf"
-				fi
-			done
-			execute_in_chroot "systemctl --no-reload set-default graphical.target >/dev/null 2>&1 || true"
-		fi
 		execute_in_chroot "systemctl --no-reload mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true"
 		execute_in_chroot "if command -v dconf >/dev/null 2>&1; then dconf update; fi"
 		execute_in_chroot "systemctl --no-reload disable resize2fs.service >/dev/null 2>&1 || true"

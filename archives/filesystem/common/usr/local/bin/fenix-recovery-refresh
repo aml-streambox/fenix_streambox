@@ -60,10 +60,10 @@ fi
 
 case "$BOARD" in
 TVPRO)
-	DTB_NAME=amlogic-t7-a311d2-tvpro.dtb
+	DTB_NAMES="t7_a311d2_tvpro4gdebian.dtb t7_a311d2_tvpro8gdebian.dtb t7c_a311d2_tvpro4gdebian.dtb t7c_a311d2_tvpro8gdebian.dtb"
 	;;
 VIM4)
-	DTB_NAME=amlogic-t7-a311d2-khadas-vim4.dtb
+	DTB_NAMES="amlogic-t7-a311d2-khadas-vim4.dtb"
 	;;
 *)
 	printf 'Unsupported recovery board: %s\n' "${BOARD:-unknown}" >&2
@@ -80,10 +80,11 @@ resolve_path() {
 }
 
 IMAGE_SRC=$(resolve_path /boot/Image)
-DTB_SRC=$(resolve_path "/boot/dtb/amlogic/$DTB_NAME")
 
 [ -n "$IMAGE_SRC" ] && [ -f "$IMAGE_SRC" ] || { printf 'Missing /boot/Image target\n' >&2; exit 1; }
-[ -n "$DTB_SRC" ] && [ -f "$DTB_SRC" ] || { printf 'Missing /boot/dtb/amlogic/%s target\n' "$DTB_NAME" >&2; exit 1; }
+for dtb_name in $DTB_NAMES; do
+	[ -f "/boot/dtb/amlogic/$dtb_name" ] || { printf 'Missing /boot/dtb/amlogic/%s target\n' "$dtb_name" >&2; exit 1; }
+done
 
 KERNEL_RELEASE=$(basename "$IMAGE_SRC" | sed 's/^vmlinuz-//')
 CONFIG_SRC=/boot/config-$KERNEL_RELEASE
@@ -128,7 +129,9 @@ rm -rf "$TMP"
 mkdir -p "$TMP/dtb/amlogic"
 
 cp "$IMAGE_SRC" "$TMP/Image"
-cp "$DTB_SRC" "$TMP/dtb/amlogic/$DTB_NAME"
+for dtb_name in $DTB_NAMES; do
+	cp "/boot/dtb/amlogic/$dtb_name" "$TMP/dtb/amlogic/$dtb_name"
+done
 [ -f "$CONFIG_SRC" ] && cp "$CONFIG_SRC" "$TMP/config-$KERNEL_RELEASE"
 
 if ! command -v fenix-build-recovery-initramfs >/dev/null 2>&1; then
@@ -142,7 +145,7 @@ board=$BOARD
 kernel_release=$KERNEL_RELEASE
 image_source=$IMAGE_SRC
 initrd_source=ram-recovery-generated
-dtb_source=$DTB_SRC
+dtb_sources=$DTB_NAMES
 created_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 display_override=$ALLOW_DISPLAY
 EOF

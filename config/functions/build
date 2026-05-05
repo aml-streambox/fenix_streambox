@@ -316,11 +316,43 @@ build_linux() {
 	else
 		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" Image $linux_dtb_targets modules $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
 	fi
+	pack_amlogic_multi_dtb
+}
+
+pack_amlogic_multi_dtb() {
+	[ -n "$FENIX_AMLOGIC_MULTI_DTB_OUTPUT" ] || return 0
+	[ -n "$FENIX_AMLOGIC_MULTI_DTB_FILES" ] || return 0
+
+	local output="$FENIX_AMLOGIC_MULTI_DTB_OUTPUT"
+	local entry dtb_name dtb_file dtb_src
+	local pack_args=()
+
+	for entry in $FENIX_AMLOGIC_MULTI_DTB_FILES; do
+		dtb_name="${entry%%:*}"
+		dtb_file="${entry#*:}"
+		dtb_src=""
+		if [ -f "$dtb_file" ]; then
+			dtb_src="$dtb_file"
+		elif [ -f "$LINUX_DIR/arch/arm64/boot/dts/amlogic/$dtb_file" ]; then
+			dtb_src="$LINUX_DIR/arch/arm64/boot/dts/amlogic/$dtb_file"
+		elif [ -f "$LINUX_COMMON_DRIVERS_DIR/arch/arm64/boot/dts/amlogic/$dtb_file" ]; then
+			dtb_src="$LINUX_COMMON_DRIVERS_DIR/arch/arm64/boot/dts/amlogic/$dtb_file"
+		fi
+
+		[ -n "$dtb_src" ] || {
+			error_msg "Multi-DTB input not found: $dtb_file"
+			return -1
+		}
+		pack_args+=("$dtb_name=$dtb_src")
+	done
+
+	info_msg "Pack Amlogic multi-DTB: $output"
+	python3 "$ROOT/scripts/pack-amlogic-multidtb.py" "$output" "${pack_args[@]}"
 }
 
 ## Build Fenix-compatible linux debs from an already-built local tree
 build_simple_linux_debs() {
-	local kernel_release image_pkgname image_pkgdir dtb_pkgname dtb_pkgdir dtb dtb_alias
+	local kernel_release image_pkgname image_pkgdir dtb_pkgname dtb_pkgdir dtb dtb_alias dtb_file dtb_src
 	local extra_moddir common_ko
 
 	info_msg "Build simple linux debs from local source..."
@@ -335,6 +367,9 @@ build_simple_linux_debs() {
 	[ -f "$LINUX_DIR/arch/arm64/boot/Image" ] || {
 		error_msg "Kernel Image not found: $LINUX_DIR/arch/arm64/boot/Image"
 		return -1
+	}
+	[ -f "$LINUX_DTB" ] || {
+		pack_amlogic_multi_dtb
 	}
 	[ -f "$LINUX_DTB" ] || {
 		error_msg "Linux DTB not found: $LINUX_DTB"
@@ -414,10 +449,28 @@ build_simple_linux_debs() {
 	dtb_pkgdir="$BUILD_IMAGES/.tmp/$dtb_pkgname"
 	rm -rf "$dtb_pkgdir"
 	mkdir -p "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic" "$dtb_pkgdir/DEBIAN"
-	for dtb in "$LINUX_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb \
-		"$LINUX_COMMON_DRIVERS_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb; do
-		[ -f "$dtb" ] || continue
-		cp "$dtb" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/"
+	if [ -z "$FENIX_SIMPLE_DTB_FILES" ]; then
+		for dtb in "$LINUX_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb \
+			"$LINUX_COMMON_DRIVERS_DIR"/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-*.dtb; do
+			[ -f "$dtb" ] || continue
+			cp "$dtb" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/"
+		done
+	fi
+	for dtb_file in $FENIX_SIMPLE_DTB_FILES; do
+		dtb_src=""
+		if [ -f "$dtb_file" ]; then
+			dtb_src="$dtb_file"
+		elif [ -f "$LINUX_DIR/arch/arm64/boot/dts/amlogic/$dtb_file" ]; then
+			dtb_src="$LINUX_DIR/arch/arm64/boot/dts/amlogic/$dtb_file"
+		elif [ -f "$LINUX_COMMON_DRIVERS_DIR/arch/arm64/boot/dts/amlogic/$dtb_file" ]; then
+			dtb_src="$LINUX_COMMON_DRIVERS_DIR/arch/arm64/boot/dts/amlogic/$dtb_file"
+		fi
+
+		[ -n "$dtb_src" ] || {
+			warning_msg "Optional DTB not found: $dtb_file"
+			continue
+		}
+		cp "$dtb_src" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/$(basename "$dtb_file")"
 	done
 	for dtb_alias in $FENIX_SIMPLE_DTB_ALIASES; do
 		cp "$LINUX_DTB" "$dtb_pkgdir/boot/dtb-$kernel_release/amlogic/$dtb_alias"
@@ -515,6 +568,7 @@ build_uboot_deb() {
 	# For amlogic platform, we need to update the dtb for u-boot
 	# Only for vendor u-boot & kernel
 	if [ "$VENDOR" == "Amlogic" ] && [ "$LINUX" != "mainline" ]; then
+		pack_amlogic_multi_dtb
 		cp "$LINUX_DTB" "$pkgdir"/usr/lib/u-boot/dtb.img
 	fi
 

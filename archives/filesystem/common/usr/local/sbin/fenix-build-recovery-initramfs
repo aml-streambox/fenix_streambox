@@ -280,7 +280,16 @@ mkdir -p /run/dhcpcd /run/dropbear /var/lib/dhcpcd
 hostname fenix-recovery
 
 CONSOLE=/dev/console
-[ -c /dev/ttyS0 ] && CONSOLE=/dev/ttyS0
+for arg in $(cat /proc/cmdline 2>/dev/null); do
+	case "$arg" in
+		console=tty0|console=tty0,*) ;;
+		console=*)
+			console_dev=${arg#console=}
+			console_dev=${console_dev%%,*}
+			[ -c "/dev/$console_dev" ] && CONSOLE="/dev/$console_dev"
+			;;
+	esac
+done
 
 log ''
 log 'Fenix RAM recovery initramfs'
