@@ -12,7 +12,7 @@
   "build": {
     "class": "make",
     "env": {
-      "BINDER_SERVICE": "/home/anshi/t7_armbian/fenix_t7/recipes/android-binder/files/binder.service"
+      "BINDER_SERVICE": "{repo_root}/recipes/android-binder/files/binder.service"
     }
   },
   "dependencies": {

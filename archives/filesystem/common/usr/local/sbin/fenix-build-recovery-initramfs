@@ -306,10 +306,6 @@ IP=/usr/bin/ip
 BOARD=$(cmdline_value khadas_board)
 RECOVERY_IP=$(cmdline_value fenix_recovery_ip)
 RECOVERY_GW=$(cmdline_value fenix_recovery_gw)
-if [ -z "$RECOVERY_IP" ] && [ "$BOARD" = TVPRO ]; then
-	RECOVERY_IP=192.168.12.102/24
-	RECOVERY_GW=${RECOVERY_GW:-192.168.12.1}
-fi
 
 "$IP" link set lo up 2>/dev/null || true
 for iface_path in /sys/class/net/*; do

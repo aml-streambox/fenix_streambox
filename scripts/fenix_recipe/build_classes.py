@@ -292,7 +292,7 @@ def load_kernel_metadata(path: Path) -> dict[str, Any]:
 
 def _build_env(build: dict[str, Any], *, target_sysroot: Path | None) -> dict[str, str]:
     env = os.environ.copy()
-    env.update(build.get("env", {}))
+    env.update({key: _expand_env_value(value) for key, value in build.get("env", {}).items()})
     if target_sysroot is not None:
         target_sysroot = target_sysroot.resolve()
         env.setdefault("SYSROOT", str(target_sysroot))
@@ -306,6 +306,10 @@ def _build_env(build: dict[str, Any], *, target_sysroot: Path | None) -> dict[st
         env.setdefault("CXX", cross_compile + "g++")
         env.setdefault("STRIP", cross_compile + "strip")
     return env
+
+
+def _expand_env_value(value: str) -> str:
+    return value.replace("{repo_root}", str(Path(__file__).resolve().parents[2]))
 
 
 def _prepare_legacy_make_dirs(install_root: Path) -> None:

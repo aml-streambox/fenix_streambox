@@ -16,8 +16,8 @@
     "class": "make",
     "env": {
       "OUT_DIR": ".",
-      "TVCONFIG_DIR": "/home/anshi/t7_armbian/fenix_t7/packages/aml-tvserver-streambox/sources/tvconfig",
-      "TVSERVER_SERVICE": "/home/anshi/t7_armbian/fenix_t7/packages/aml-tvserver-streambox/files/tvserver.service"
+      "TVCONFIG_DIR": "{repo_root}/packages/aml-tvserver-streambox/sources/tvconfig",
+      "TVSERVER_SERVICE": "{repo_root}/packages/aml-tvserver-streambox/files/tvserver.service"
     }
   },
   "dependencies": {
