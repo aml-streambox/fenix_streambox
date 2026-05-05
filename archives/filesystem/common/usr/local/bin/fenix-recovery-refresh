@@ -115,7 +115,6 @@ check_display_symbol() {
 
 if [ "$ALLOW_DISPLAY" -ne 1 ] && [ -f "$CONFIG_SRC" ]; then
 	check_display_symbol CONFIG_DRM_MESON_T7_VENDOR meson_t7_vendor
-	check_display_symbol CONFIG_AMLOGIC_COMMON_CLK_T7_DISPLAY t7_display_clkc
 	check_display_symbol CONFIG_AMLOGIC_DRM aml_drm
 	check_display_symbol CONFIG_AMLOGIC_MEDIA_MODULE aml_media
 elif [ ! -f "$CONFIG_SRC" ]; then

@@ -7,7 +7,7 @@ initrd_high=0xffffffffffffffff
 fdt_high=0xffffffffffffffff
 
 ## Setup console
-consoles=console=ttyAML0,921600n8 console=tty0
+consoles=console=ttyS0,921600n8 console=tty0
 
 ## Setup FAN mode
 fan_mode=auto
