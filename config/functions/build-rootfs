@@ -125,15 +125,20 @@ install_common()
 	# Premit root login via SSH for the first boot
 	sed -i 's/#\?PermitRootLogin .*/PermitRootLogin yes/' $ROOTFS_TEMP/etc/ssh/sshd_config
 
-	# Enable additional services. Keep rootfs resizing disabled for TVPRO/T7
-	# bring-up images: aborted early display tests can leave online resize work
-	# interrupted and corrupt the ext4 rootfs.
+	# Enable additional services.
 	if [ "$KHADAS_BOARD" = "TVPRO" ]; then
-		touch $ROOTFS_TEMP/root/.no_rootfs_resize
-		mkdir -p $ROOTFS_TEMP/etc/modules-load.d $ROOTFS_TEMP/etc/modprobe.d
+		mkdir -p $ROOTFS_TEMP/etc/modules-load.d $ROOTFS_TEMP/etc/modprobe.d $ROOTFS_TEMP/etc/initramfs-tools
 		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-display.conf <<-EOF
 		# Load the validated TVPRO/T7 HDMI scanout stack on normal boot.
 		t7_display_clkc
+		amlogic_secmon
+		amlogic_cpuinfo
+		amlogic_power
+		aml_media
+		aml_drm
+		EOF
+		cat > $ROOTFS_TEMP/etc/initramfs-tools/modules <<-EOF
+		# Load TVPRO HDMI scanout before systemd so fbcon can show early boot.
 		amlogic_secmon
 		amlogic_cpuinfo
 		amlogic_power
@@ -170,11 +175,8 @@ install_common()
 		EOF
 		execute_in_chroot "systemctl --no-reload mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true"
 		execute_in_chroot "if command -v dconf >/dev/null 2>&1; then dconf update; fi"
-		execute_in_chroot "systemctl --no-reload disable resize2fs.service >/dev/null 2>&1 || true"
-		execute_in_chroot "systemctl --no-reload enable system-check.service"
-	else
-		execute_in_chroot "systemctl --no-reload enable resize2fs.service system-check.service"
 	fi
+	execute_in_chroot "systemctl --no-reload enable resize2fs.service system-check.service"
 
 	# Disable repeated messages due to xconsole not being installed.
 	[[ -f $ROOTFS_TEMP/etc/rsyslog.d/50-default.conf ]] && sed '/daemon\.\*\;mail.*/,/xconsole/ s/.*/#&/' -i $ROOTFS_TEMP/etc/rsyslog.d/50-default.conf

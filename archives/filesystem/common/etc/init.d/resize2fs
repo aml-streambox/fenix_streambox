@@ -38,10 +38,26 @@ do_expand_partition()
 	local rootpart=$(findmnt -n -o SOURCE /) # i.e. /dev/mmcblk0p1
 	local rootdevice=$(lsblk -n -o PKNAME $rootpart) # i.e. mmcblk0
 	local rootdevicepath="/dev/$rootdevice" # i.e. /dev/mmcblk0
+	local parted_plain parted_sectors
+
+	if ! parted_plain=$(parted $rootdevicepath print -sm 2>>${Log}); then
+		echo -e "\n### [firstrun] Unable to parse partition table on $rootdevicepath; resizing filesystem only.\n" >>${Log}
+		return 0
+	fi
+
+	if ! parted_sectors=$(parted $rootdevicepath unit s print -sm 2>>${Log}); then
+		echo -e "\n### [firstrun] Unable to parse partition sectors on $rootdevicepath; resizing filesystem only.\n" >>${Log}
+		return 0
+	fi
+
 	# get count of partitions and their boundaries
-	local partitions=$(parted $rootdevicepath print -sm | tail -1 | awk -F ':' '{print $1}')
-	local partstart=$(parted $rootdevicepath unit s print -sm | tail -1 | cut -d: -f2 | sed 's/s//') # start of first partition
-	local partend=$(parted $rootdevicepath unit s print -sm | head -3 | tail -1 | cut -d: -f3 | sed 's/s//') # end of first partition
+	local partitions=$(printf '%s\n' "$parted_plain" | tail -1 | awk -F ':' '{print $1}')
+	local partstart=$(printf '%s\n' "$parted_sectors" | tail -1 | cut -d: -f2 | sed 's/s//') # start of first partition
+	local partend=$(printf '%s\n' "$parted_sectors" | head -3 | tail -1 | cut -d: -f3 | sed 's/s//') # end of first partition
+	if ! [[ $partitions =~ ^[0-9]+$ && $partstart =~ ^[0-9]+$ && $partend =~ ^[0-9]+$ ]]; then
+		echo -e "\n### [firstrun] Unexpected partition table on $rootdevicepath; resizing filesystem only.\n" >>${Log}
+		return 0
+	fi
 	local startfrom=$(( $partend + 1 ))
 	[[ $partitions == 1 ]] && startfrom=$partstart
 	local capacity=$(( $(lsblk -n -b -d -o SIZE $rootdevicepath) / 1024 / 1024 / 1024 )) # GiB
