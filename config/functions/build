@@ -306,6 +306,7 @@ build_linux() {
 			info_msg "Merging config fragment: $FRAGMENT_FILE"
 			cd "$LINUX_VENDOR_DIR"
 			$LINUX_VENDOR_DIR/scripts/kconfig/merge_config.sh -m -O "$LINUX_VENDOR_DIR" "$LINUX_VENDOR_DIR/.config" "$FRAGMENT_FILE"
+			make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" olddefconfig $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
 		else
 			warning_msg "Config fragment not found: $LINUX_DEFCONFIG_FRAGMENT"
 		fi
