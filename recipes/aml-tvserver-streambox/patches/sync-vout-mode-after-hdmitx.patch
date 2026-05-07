@@ -1,6 +1,17 @@
+diff --git a/test/hdmiin-demo.c b/test/hdmiin-demo.c
+index 4bf3302..876b3fe 100644
 --- a/test/hdmiin-demo.c
 +++ b/test/hdmiin-demo.c
-@@ -193,6 +193,33 @@ static int FormatHdmitxMode(int width, int height, int fps, char *mode_str, size
+@@ -12,6 +12,8 @@
+ 
+ static int run = 1;
+ static struct TvClientWrapper_t *g_pTvClientWrapper = NULL;
++static char g_last_mode_str[64] = {0};
++static int g_last_frac_rate_policy = 0;
+ 
+ static int WriteSysfs(const char *path, const char *cmd)
+ {
+@@ -193,6 +195,103 @@ static int FormatHdmitxMode(int width, int height, int fps, char *mode_str, size
      return 0;
  }
  
@@ -36,18 +47,118 @@
 +    WriteSysfs("/sys/class/display/debug", "0");
 +}
 +
++static void ApplyHdmitxMode(const char *mode_str, int frac_rate_policy)
++{
++    int ret;
++    char frac_policy_str[16] = {0};
++    const char *hdmitx_disp_mode_path = "/sys/class/amhdmitx/amhdmitx0/disp_mode";
++    const char *hdmitx_frac_rate_policy_path = "/sys/class/amhdmitx/amhdmitx0/frac_rate_policy";
++
++    if (mode_str == NULL || mode_str[0] == '\0') {
++        return;
++    }
++
++    snprintf(frac_policy_str, sizeof(frac_policy_str), "%d", frac_rate_policy);
++    LOGD("%s: Setting frac_rate_policy to %d before setting disp_mode\n", __FUNCTION__, frac_rate_policy);
++    ret = WriteSysfs(hdmitx_frac_rate_policy_path, frac_policy_str);
++    if (ret != 0) {
++        LOGD("%s: Warning: Failed to set frac_rate_policy to %d (ret=%d), continuing anyway\n",
++             __FUNCTION__, frac_rate_policy, ret);
++    } else {
++        usleep(10000);
++    }
++
++    LOGD("%s: Disabling current hdmitx mode before setting new mode\n", __FUNCTION__);
++    ret = WriteSysfs(hdmitx_disp_mode_path, "off");
++    if (ret != 0) {
++        LOGD("%s: Warning: Failed to disable current hdmitx mode (ret=%d), continuing anyway\n", __FUNCTION__, ret);
++    } else {
++        usleep(50000);
++    }
++
++    ret = WriteSysfs(hdmitx_disp_mode_path, mode_str);
++    if (ret == 0) {
++        LOGD("%s: Successfully set hdmitx mode to: %s (with frac_rate_policy=%d)\n",
++             __FUNCTION__, mode_str, frac_rate_policy);
++        SynchronizeVoutMode(mode_str);
++    } else {
++        LOGD("%s: Failed to set hdmitx mode to: %s (ret=%d)\n", __FUNCTION__, mode_str, ret);
++    }
++}
++
++static void EnsureHdmitxMode(void)
++{
++    char display_mode[128] = {0};
++    char hdmitx_mode[1024] = {0};
++    int needs_restore = 0;
++
++    if (g_last_mode_str[0] == '\0') {
++        return;
++    }
++
++    if (ReadSysfs("/sys/class/display/mode", display_mode, sizeof(display_mode)) != 0 ||
++        strcmp(display_mode, g_last_mode_str) != 0) {
++        needs_restore = 1;
++    }
++
++    if (ReadSysfs("/sys/class/amhdmitx/amhdmitx0/disp_mode", hdmitx_mode, sizeof(hdmitx_mode)) != 0 ||
++        strstr(hdmitx_mode, g_last_mode_str) == NULL) {
++        needs_restore = 1;
++    }
++
++    if (needs_restore) {
++        LOGD("%s: Restoring hdmitx/vout mode to %s\n", __FUNCTION__, g_last_mode_str);
++        ApplyHdmitxMode(g_last_mode_str, g_last_frac_rate_policy);
++    }
++}
++
  /* Synchronize hdmitx output to match hdmirx input */
  static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper)
  {
-@@ -315,6 +342,7 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
-     if (ret == 0) {
-         LOGD("%s: Successfully set hdmitx mode to: %s (with frac_rate_policy=%d)\n",
-              __FUNCTION__, mode_str, frac_rate_policy);
-+        SynchronizeVoutMode(mode_str);
-     } else {
-         LOGD("%s: Failed to set hdmitx mode to: %s (ret=%d)\n", __FUNCTION__, mode_str, ret);
+@@ -283,47 +382,16 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+         frac_rate_policy = 0;
      }
-@@ -324,8 +352,9 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+ 
+-    const char *hdmitx_disp_mode_path = "/sys/class/amhdmitx/amhdmitx0/disp_mode";
+-    const char *hdmitx_frac_rate_policy_path = "/sys/class/amhdmitx/amhdmitx0/frac_rate_policy";
+-
+-    /* Set frac_rate_policy BEFORE setting disp_mode (required by driver) */
+-    char frac_policy_str[2] = {0};
+-    snprintf(frac_policy_str, sizeof(frac_policy_str), "%d", frac_rate_policy);
+-    LOGD("%s: Setting frac_rate_policy to %d before setting disp_mode\n", __FUNCTION__, frac_rate_policy);
+-    ret = WriteSysfs(hdmitx_frac_rate_policy_path, frac_policy_str);
+-    if (ret != 0) {
+-        LOGD("%s: Warning: Failed to set frac_rate_policy to %d (ret=%d), continuing anyway\n",
+-             __FUNCTION__, frac_rate_policy, ret);
+-    } else {
+-        LOGD("%s: Successfully set frac_rate_policy to %d\n", __FUNCTION__, frac_rate_policy);
+-        /* Small delay after setting frac_rate_policy */
+-        usleep(10000); /* 10ms delay */
+-    }
+-
+-    /* Disable current mode before setting new mode (required by driver) */
+-    LOGD("%s: Disabling current hdmitx mode before setting new mode\n", __FUNCTION__);
+-    ret = WriteSysfs(hdmitx_disp_mode_path, "off");
+-    if (ret != 0) {
+-        LOGD("%s: Warning: Failed to disable current hdmitx mode (ret=%d), continuing anyway\n", __FUNCTION__, ret);
+-    } else {
+-        /* Wait a bit for mode to be disabled */
+-        usleep(50000); /* 50ms delay */
+-    }
+-
+-    /* Set hdmitx output mode to match hdmirx input */
+-    ret = WriteSysfs(hdmitx_disp_mode_path, mode_str);
+-    if (ret == 0) {
+-        LOGD("%s: Successfully set hdmitx mode to: %s (with frac_rate_policy=%d)\n",
+-             __FUNCTION__, mode_str, frac_rate_policy);
+-    } else {
+-        LOGD("%s: Failed to set hdmitx mode to: %s (ret=%d)\n", __FUNCTION__, mode_str, ret);
+-    }
++    snprintf(g_last_mode_str, sizeof(g_last_mode_str), "%s", mode_str);
++    g_last_frac_rate_policy = frac_rate_policy;
++    ApplyHdmitxMode(mode_str, frac_rate_policy);
+ }
+ 
  static int DisplayInit()
  {
 -//    WriteSysfs("/sys/class/graphics/fb0/osd_display_debug", "1");
@@ -58,3 +169,15 @@
      return 0;
  
  }
+@@ -485,8 +553,9 @@ int main(int argc, char **argv) {
+ 
+ 	while (run)
+ 	{
++		EnsureHdmitxMode();
+ 		sleep(1);
+ 	}
+ 
+     return 0;
+-}
+\ No newline at end of file
++}
