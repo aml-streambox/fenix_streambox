@@ -1,0 +1,60 @@
+--- a/test/hdmiin-demo.c
++++ b/test/hdmiin-demo.c
+@@ -193,6 +193,33 @@ static int FormatHdmitxMode(int width, int height, int fps, char *mode_str, size
+     return 0;
+ }
+ 
++static void SynchronizeVoutMode(const char *mode_str)
++{
++    int ret;
++
++    if (mode_str == NULL || mode_str[0] == '\0') {
++        return;
++    }
++
++    /* Keep vout/video geometry in sync with direct HDMITX sysfs mode changes. */
++    WriteSysfs("/sys/class/display/debug", "1");
++    ret = WriteSysfs("/sys/class/display/mode", mode_str);
++    if (ret != 0) {
++        LOGD("%s: Failed to set vout mode to: %s (ret=%d)\n", __FUNCTION__, mode_str, ret);
++    } else {
++        LOGD("%s: Successfully set vout mode to: %s\n", __FUNCTION__, mode_str);
++    }
++    usleep(50000);
++    ret = WriteSysfs("/sys/class/video/axis", "0 0 0 0");
++    if (ret != 0) {
++        LOGD("%s: Failed to reset video axis (ret=%d)\n", __FUNCTION__, ret);
++    }
++    ret = WriteSysfs("/sys/class/video/video_zorder", "129");
++    if (ret != 0) {
++        LOGD("%s: Failed to raise video z-order (ret=%d)\n", __FUNCTION__, ret);
++    }
++    ret = WriteSysfs("/sys/class/video/force_property_change", "1");
++    if (ret != 0) {
++        LOGD("%s: Failed to force video property refresh (ret=%d)\n", __FUNCTION__, ret);
++    }
++    WriteSysfs("/sys/class/display/debug", "0");
++}
++
+ /* Synchronize hdmitx output to match hdmirx input */
+ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper)
+ {
+@@ -315,6 +342,7 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+     if (ret == 0) {
+         LOGD("%s: Successfully set hdmitx mode to: %s (with frac_rate_policy=%d)\n",
+              __FUNCTION__, mode_str, frac_rate_policy);
++        SynchronizeVoutMode(mode_str);
+     } else {
+         LOGD("%s: Failed to set hdmitx mode to: %s (ret=%d)\n", __FUNCTION__, mode_str, ret);
+     }
+@@ -324,8 +352,9 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+ static int DisplayInit()
+ {
+-//    WriteSysfs("/sys/class/graphics/fb0/osd_display_debug", "1");
+-    WriteSysfs("/sys/class/graphics/fb0/blank", "1");
++    /* Keep the DRM/OSD layer alive, but put TV video above it. */
++    WriteSysfs("/sys/class/video/video_zorder", "129");
++    WriteSysfs("/sys/class/video/force_property_change", "1");
+     return 0;
+ 
+ }

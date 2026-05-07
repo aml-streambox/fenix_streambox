@@ -10,7 +10,8 @@
     "revision": "6ce5bf4d60c9d49ce0d12c833f550c25bd323c8a"
   },
   "patches": [
-    "patches/makefile-rootless.patch"
+    "patches/makefile-rootless.patch",
+    "patches/sync-vout-mode-after-hdmitx.patch"
   ],
   "build": {
     "class": "make",
