@@ -289,7 +289,7 @@ build_board_deb() {
 		sed -i "s/partitiontype=partition_type=.*/partitiontype=partition_type=\$partition_type/g" /boot/uEnv.txt
 	fi
 
-	systemctl --no-reload enable fenix-zram-config.service fenix-hardware-optimize.service usb-gadget-khadas.service fenix-capture-boot-log.service >/dev/null 2>&1
+	systemctl --no-reload enable fenix-zram-config.service fenix-hardware-optimize.service usb-gadget-khadas.service fenix-capture-boot-log.service fenix-follow-boot-log.service >/dev/null 2>&1
 	if [ "\$BOARD" == "TVPRO" ] || [ "\$BOARD" == "VIM4" ]; then
 		systemctl --no-reload enable fenix-boot-success.service >/dev/null 2>&1 || true
 		systemctl --no-reload enable serial-getty@${SERIALCON}.service >/dev/null 2>&1 || true
@@ -403,6 +403,7 @@ build_board_deb() {
 	chmod 755 $pkgdir/usr/local/bin/fenix-recovery-refresh 2>/dev/null || true
 	chmod 755 $pkgdir/usr/local/bin/fenix-mark-boot-success 2>/dev/null || true
 	chmod 755 $pkgdir/usr/local/bin/fenix-capture-boot-log 2>/dev/null || true
+	chmod 755 $pkgdir/usr/local/bin/fenix-follow-boot-log 2>/dev/null || true
 	chmod 755 $pkgdir/usr/local/sbin/fenix-build-recovery-initramfs 2>/dev/null || true
 
 	# Copy boot environment

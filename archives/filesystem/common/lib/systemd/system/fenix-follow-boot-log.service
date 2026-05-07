@@ -1,0 +1,14 @@
+[Unit]
+Description=Continuously capture early kernel log for boot diagnosis
+DefaultDependencies=no
+After=local-fs.target
+Before=systemd-modules-load.service sysinit.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fenix-follow-boot-log
+Restart=no
+
+[Install]
+WantedBy=sysinit.target

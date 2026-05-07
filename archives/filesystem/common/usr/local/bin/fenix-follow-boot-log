@@ -1,0 +1,28 @@
+#!/bin/sh
+# Continuously persist kernel logs early enough to catch module probe hangs.
+
+set -eu
+
+LOG_ROOT=${FENIX_BOOT_LOG_DIR:-/var/log/fenix-boot}/live
+BOOT_ID=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || date -u +%s)
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+OUT_DIR="$LOG_ROOT/$STAMP-$BOOT_ID"
+OUT_FILE="$OUT_DIR/dmesg-follow-raw.txt"
+
+mkdir -p "$OUT_DIR"
+cp /proc/cmdline "$OUT_DIR/cmdline.txt" 2>/dev/null || true
+uname -a > "$OUT_DIR/uname.txt" 2>&1 || true
+
+# Save the buffer first, then keep appending new messages. Line buffering keeps
+# useful probe logs on disk even if a later driver blocks the boot.
+{
+	printf '# initial dmesg snapshot\n'
+	dmesg 2>&1 || true
+	printf '\n# dmesg --follow\n'
+} >> "$OUT_FILE"
+sync
+
+stdbuf -oL -eL dmesg --follow 2>&1 | while IFS= read -r line; do
+	printf '%s\n' "$line" >> "$OUT_FILE"
+	sync
+done

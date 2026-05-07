@@ -82,7 +82,7 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
-Depends: android-binder, libboost-system1.83.0, android-liblog
+Depends: libstdc++6
 Section: libs
 Priority: optional
 Description: Amlogic Audio Utils Library

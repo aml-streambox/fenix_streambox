@@ -85,7 +85,7 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
-Depends: aml-audio-utils, android-binder, libboost-system1.83.0, libgrpc++1.51t64, libprotobuf32t64, libgrpc29t64, libabsl20220623t64
+Depends: aml-audio-utils, android-binder, android-liblog, libstdc++6
 Section: libs
 Priority: optional
 Description: Amlogic Audio Service
