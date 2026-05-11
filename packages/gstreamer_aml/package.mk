@@ -16,9 +16,23 @@ make_target() {
 }
 
 makeinstall_target() {
-	mkdir -p $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/gstreamer_aml
+	local dest="$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/gstreamer_aml"
+	local src=""
+
+	mkdir -p "$dest"
 	# Remove old debs
-	rm -rf $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/gstreamer_aml/*
-	cp ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/*.deb $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/gstreamer_aml 2> /dev/null || \
-	cp -rf ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${KHADAS_BOARD}/${LINUX}/* $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/gstreamer_aml
+	rm -rf "$dest"/*
+
+	if compgen -G "${DISTRIB_RELEASE}/${DISTRIB_ARCH}/*.deb" > /dev/null; then
+		src="${DISTRIB_RELEASE}/${DISTRIB_ARCH}"
+	elif [ -d "${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${KHADAS_BOARD}/${LINUX}" ]; then
+		src="${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${KHADAS_BOARD}/${LINUX}"
+	elif [ "$KHADAS_BOARD" = "TVPRO" ] && [ "$LINUX" = "7.1-rc1" ] && [ -d "${DISTRIB_RELEASE}/${DISTRIB_ARCH}/VIM4/5.15" ]; then
+		src="${DISTRIB_RELEASE}/${DISTRIB_ARCH}/VIM4/5.15"
+	else
+		error_msg "No gstreamer_aml debs for ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${KHADAS_BOARD}/${LINUX}"
+		return 1
+	fi
+
+	cp -rf "$src"/* "$dest"
 }
