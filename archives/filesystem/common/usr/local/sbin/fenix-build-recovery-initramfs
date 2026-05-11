@@ -313,6 +313,8 @@ for iface_path in /sys/class/net/*; do
 	[ "$iface" = lo ] && continue
 	log "Starting network on $iface"
 	"$IP" link set "$iface" up 2>/dev/null || true
+	log "Waiting 20 seconds for $iface link before DHCP"
+	sleep 20
 	if command -v dhcpcd >/dev/null 2>&1; then
 		dhcpcd -4 -L -K -t 10 "$iface" >"$CONSOLE" 2>&1 &
 	else
