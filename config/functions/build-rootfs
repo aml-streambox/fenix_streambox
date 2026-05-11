@@ -137,6 +137,19 @@ install_common()
 		aml_media
 		aml_drm
 		EOF
+		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-decoders.conf <<-EOF
+		# Load TVPRO/T7 vendor V4L2 decoder frontends for format probing.
+		amvdec_mh264_v4l
+		amvdec_h265_v4l
+		amvdec_av1_v4l
+		amvdec_vp9_v4l
+		amvdec_mmjpeg_v4l
+		amvdec_mmpeg12_v4l
+		amvdec_mmpeg4_v4l
+		amvdec_vc1_v4l
+		amvdec_mavs_v4l
+		amvdec_avs2_v4l
+		EOF
 		cat > $ROOTFS_TEMP/etc/initramfs-tools/modules <<-EOF
 		# Load TVPRO HDMI scanout before systemd so fbcon can show early boot.
 		amlogic_secmon
