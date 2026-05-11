@@ -150,6 +150,12 @@ install_common()
 		amvdec_mavs_v4l
 		amvdec_avs2_v4l
 		EOF
+		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-encoders.conf <<-EOF
+		# Load Streambox/Yocto encoder drivers for Wave521 and JPEG encode.
+		encoder_common
+		amvenc_multi
+		jpegenc
+		EOF
 		cat > $ROOTFS_TEMP/etc/initramfs-tools/modules <<-EOF
 		# Load TVPRO HDMI scanout before systemd so fbcon can show early boot.
 		amlogic_secmon
