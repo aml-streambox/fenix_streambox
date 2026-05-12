@@ -141,6 +141,12 @@ install_common()
 		# Load the T7 CPU clock provider so cpufreq-dt can bind.
 		amlogic_clk_soc_t7
 		EOF
+		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-audio.conf <<-EOF
+		# Load TVPRO/T7 ASoC codecs before the vendor sound card binds.
+		amlogic_snd_codec_dummy
+		amlogic_snd_codec_tl1
+		amlogic_snd_soc
+		EOF
 		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-decoders.conf <<-EOF
 		# Load TVPRO/T7 vendor V4L2 decoder frontends for format probing.
 		amvdec_mh264_v4l
@@ -167,12 +173,6 @@ install_common()
 		amlogic_power
 		aml_media
 		aml_drm
-		EOF
-		cat > $ROOTFS_TEMP/etc/modprobe.d/tvpro-t7-audio-blacklist.conf <<-EOF
-		# Keep the unstable TVPRO/T7 ASoC stack from being auto-probed by desktop audio services.
-		blacklist amlogic-snd-codec-dummy
-		blacklist amlogic-snd-soc
-		blacklist amlogic-snd-codec-tl1
 		EOF
 		mkdir -p $ROOTFS_TEMP/etc/systemd/logind.conf.d $ROOTFS_TEMP/etc/dconf/db/local.d
 		cat > $ROOTFS_TEMP/etc/systemd/logind.conf.d/tvpro-no-suspend.conf <<-EOF
