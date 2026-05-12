@@ -137,6 +137,10 @@ install_common()
 		aml_media
 		aml_drm
 		EOF
+		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-cpufreq.conf <<-EOF
+		# Load the T7 CPU clock provider so cpufreq-dt can bind.
+		amlogic_clk_soc_t7
+		EOF
 		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-decoders.conf <<-EOF
 		# Load TVPRO/T7 vendor V4L2 decoder frontends for format probing.
 		amvdec_mh264_v4l
