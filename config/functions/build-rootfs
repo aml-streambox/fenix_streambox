@@ -128,6 +128,7 @@ install_common()
 	# Enable additional services.
 	if [ "$KHADAS_BOARD" = "TVPRO" ]; then
 		mkdir -p $ROOTFS_TEMP/etc/modules-load.d $ROOTFS_TEMP/etc/modprobe.d $ROOTFS_TEMP/etc/initramfs-tools
+		if [ "$LINUX" = "7.1-rc1" ]; then
 		cat > $ROOTFS_TEMP/etc/modules-load.d/tvpro-t7-display.conf <<-EOF
 		# Load the validated TVPRO/T7 HDMI scanout stack on normal boot.
 		t7_display_clkc
@@ -174,6 +175,7 @@ install_common()
 		aml_media
 		aml_drm
 		EOF
+		fi
 		mkdir -p $ROOTFS_TEMP/etc/systemd/logind.conf.d $ROOTFS_TEMP/etc/dconf/db/local.d
 		cat > $ROOTFS_TEMP/etc/systemd/logind.conf.d/tvpro-no-suspend.conf <<-EOF
 		[Login]
@@ -392,10 +394,10 @@ create_rootfs_cache()
 
 	info_msg "Installing base system - Stage 1/2"
 
-	echo "debootstrap --variant=minbase --include=${DEBOOTSTRAP_LIST// /,} ${PACKAGE_LIST_EXCLUDE:+ --exclude=${PACKAGE_LIST_EXCLUDE// /,}} \
+	echo "debootstrap --variant=minbase ${DEBOOTSTRAP_KEYRING:+--keyring=$DEBOOTSTRAP_KEYRING} --include=${DEBOOTSTRAP_LIST// /,} ${PACKAGE_LIST_EXCLUDE:+ --exclude=${PACKAGE_LIST_EXCLUDE// /,}} \
 		--arch=$DISTRIB_ARCH --components=${DEBOOTSTRAP_COMPONENTS} --foreign $DISTRIB_RELEASE $ROOTFS_TEMP/ $apt_mirror"
 
-	eval 'debootstrap --variant=minbase --include=${DEBOOTSTRAP_LIST// /,} ${PACKAGE_LIST_EXCLUDE:+ --exclude=${PACKAGE_LIST_EXCLUDE// /,}} \
+	eval 'debootstrap --variant=minbase ${DEBOOTSTRAP_KEYRING:+--keyring=$DEBOOTSTRAP_KEYRING} --include=${DEBOOTSTRAP_LIST// /,} ${PACKAGE_LIST_EXCLUDE:+ --exclude=${PACKAGE_LIST_EXCLUDE// /,}} \
 		--arch=$DISTRIB_ARCH --components=${DEBOOTSTRAP_COMPONENTS} --foreign $DISTRIB_RELEASE $ROOTFS_TEMP/ $apt_mirror'
 
 	[[ ${PIPESTATUS[0]} -ne 0 || ! -f $ROOTFS_TEMP/debootstrap/debootstrap ]] && error_msg "Debootstrap base system first stage failed" && return -1

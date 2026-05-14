@@ -855,11 +855,14 @@ source config/boards/${KHADAS_BOARD}.conf || { cd $CDIR;   return 1
 }; cd $CDIR
 
 DISTRIBUTION_ARRAY_LEN=${#DISTRIBUTION_ARRAY[@]}
-Ubuntu_RELEASE_ARRAY_LEN=${#Ubuntu_RELEASE_ARRAY[@]}
-Debian_RELEASE_ARRAY_LEN=${#Debian_RELEASE_ARRAY[@]}
+for distribution_name in "${DISTRIBUTION_ARRAY[@]}"; do
+	declare -n release_array_ref="${distribution_name}_RELEASE_ARRAY"
+	declare -g "${distribution_name}_RELEASE_ARRAY_LEN=${#release_array_ref[@]}"
+	declare -n type_array_ref="${distribution_name}_TYPE_ARRAY"
+	declare -g "${distribution_name}_TYPE_ARRAY_LEN=${#type_array_ref[@]}"
+	unset -n release_array_ref type_array_ref
+done
 DISTRIB_ARCH_ARRAY_LEN=${#DISTRIB_ARCH_ARRAY[@]}
-Ubuntu_TYPE_ARRAY_LEN=${#Ubuntu_TYPE_ARRAY[@]}
-Debian_TYPE_ARRAY_LEN=${#Debian_TYPE_ARRAY[@]}
 INSTALL_TYPE_ARRAY_LEN=${#INSTALL_TYPE_ARRAY[@]}
 
 [ ! "$UBOOT" -a "$LINUX" = "mainline" ] && \

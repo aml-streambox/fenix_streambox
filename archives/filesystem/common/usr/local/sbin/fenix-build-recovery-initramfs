@@ -89,6 +89,7 @@ copy_one() {
 	dst=$ROOT$src
 	[ -e "$src" ] || return 0
 	mkdir -p "$(dirname "$dst")"
+	rm -f "$dst"
 	cp -aL "$src" "$dst"
 }
 

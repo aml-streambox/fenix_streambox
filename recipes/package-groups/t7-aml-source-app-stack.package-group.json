@@ -3,7 +3,7 @@
   "name": "t7-aml-source-app-stack",
   "selectors": {
     "boards": ["TVPRO", "VIM4"],
-    "distributions": ["Ubuntu", "Debian"],
+    "distributions": ["Ubuntu", "Debian", "Streambox"],
     "releases": ["jammy", "noble", "bookworm"],
     "image_types": ["server", "gnome"],
     "install_types": ["EMMC", "SD-USB"]

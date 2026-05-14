@@ -1,0 +1,21 @@
+{
+  "schema": "fenix.package-group.v1",
+  "name": "streambox-debian12-base",
+  "selectors": {
+    "boards": ["TVPRO"],
+    "distributions": ["Streambox"],
+    "releases": ["bookworm"],
+    "image_types": ["minimal"],
+    "install_types": ["EMMC", "SD-USB"]
+  },
+  "include": [
+    "t7-kernel-modules",
+    "t7-aml-legacy-binary-stack"
+  ],
+  "recipes": [],
+  "distro_packages": [
+    "cockpit",
+    "kmod"
+  ],
+  "notes": "Initial Streambox Debian 12 product selector. Yocto-origin app recipes for Cockpit plugins, gst-manager, one-kvm, libvfmcap, streambox-tv, and full tvserver integration are blocked until their sources are mirrored under the workspace and branched on fenix_streambox_port."
+}
