@@ -5,6 +5,8 @@
 *.orig
 *~
 \#*#
+__pycache__/
+*.pyc
 
 !.dockerignore
 !.github

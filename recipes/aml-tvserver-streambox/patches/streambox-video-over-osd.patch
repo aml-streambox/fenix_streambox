@@ -1,0 +1,53 @@
+diff --git a/test/streambox-tv.c b/test/streambox-tv.c
+index 9e1f9c2..1ef7c40 100644
+--- a/test/streambox-tv.c
++++ b/test/streambox-tv.c
+@@ -75,6 +75,10 @@
+ static int g_headless_mode = 0;      /* 0=normal (TX connected), 1=headless (capture-only) */
+ static int g_tv_started = 0;         /* 0=stopped, 1=started */
+ static int g_uevent_fd = -1;         /* Netlink socket for uevent */
++
++/* Keep HDMI passthrough above the framebuffer/DRM OSD plane. */
++#define VIDEO_ZORDER_ABOVE_OSD "255"
++
+ static pthread_t g_uevent_thread;    /* Uevent monitor thread */
+ 
+ /* Audio passthrough (alsaloop) process management */
+@@ -377,6 +381,13 @@ static void SyncVideoAxisToHdmitx(void)
+     }
+ }
+ 
++static void SetVideoAboveOsd(void)
++{
++    WriteSysfs("/sys/class/video/video_zorder", VIDEO_ZORDER_ABOVE_OSD);
++    WriteSysfs("/sys/class/video/force_property_change", "1");
++}
++
+ static void ResetFb0AfterTxModeChange(void)
+ {
+     int fd;
+@@ -2040,6 +2051,7 @@ static void StartTvProcessing(struct TvClientWrapper_t *pTvClientWrapper)
+ 
+     source = (tv_source_input_t)config_get_source_input(video->hdmi_source);
+     StartTv(pTvClientWrapper, source);
++    SetVideoAboveOsd();
+     g_tv_started = 1;
+     LOGD("%s: TV processing started\n", __FUNCTION__);
+ }
+@@ -2561,6 +2573,7 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+      */
+     SyncDrmCrtcMode(mode_str);
+     SyncVideoAxisToHdmitx();
++    SetVideoAboveOsd();
+ 
+     LOGD("%s: HDMI TX stable, restarting audio passthrough\n", __FUNCTION__);
+     StartAudioPassthrough();
+@@ -2574,7 +2587,8 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+ 
+ static int DisplayInit(void)
+ {
+     WriteSysfs("/sys/class/graphics/fb0/blank", "1");
++    SetVideoAboveOsd();
+     return 0;
+ }
+ 

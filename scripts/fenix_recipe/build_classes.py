@@ -230,13 +230,26 @@ def _build_kernel_module(
     if not source_dir.is_dir():
         raise BuildError(f"source directory does not exist: {source_dir}")
 
+    source_dir = source_dir.resolve()
+    install_root = install_root.resolve()
     build = data["build"]
     env = _build_env(build, target_sysroot=None)
-    kernel_build_dir = Path(kernel_metadata["build_dir"])
+    kernel_build_dir = Path(kernel_metadata["build_dir"]).resolve()
     architecture = kernel_metadata["architecture"]
     cross_compile = kernel_metadata["cross_compile"]
     kernel_version = kernel_metadata["kernel_version"]
     package_name = data["name"]
+
+    clean_command = [
+        "make",
+        "-C",
+        str(kernel_build_dir),
+        f"M={source_dir}",
+        f"ARCH={architecture}",
+        f"CROSS_COMPILE={cross_compile}",
+        "clean",
+    ]
+    _run(clean_command, env=env)
 
     modules_command = [
         "make",
@@ -270,6 +283,21 @@ def _build_kernel_module(
 
     modules_dir = install_root / "lib/modules" / kernel_version / "extra" / package_name
     modules_dir.mkdir(parents=True, exist_ok=True)
+    _stage_kernel_module_metadata_files(data, source_dir=source_dir, install_root=install_root)
+
+
+def _stage_kernel_module_metadata_files(data: dict[str, Any], *, source_dir: Path, install_root: Path) -> None:
+    for output in data.get("outputs", []):
+        for module in output.get("kernel_modules", []):
+            for rule in module.get("udev_rules", []):
+                staged_rule = install_root / rule
+                if staged_rule.is_file():
+                    continue
+                source_rule = source_dir / rule
+                if not source_rule.is_file():
+                    continue
+                staged_rule.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_rule, staged_rule)
 
 
 def load_kernel_metadata(path: Path) -> dict[str, Any]:

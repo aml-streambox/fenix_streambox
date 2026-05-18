@@ -1,5 +1,5 @@
 diff --git a/test/hdmiin-demo.c b/test/hdmiin-demo.c
-index 4bf3302..876b3fe 100644
+index 4bf3302..a32d2c5 100644
 --- a/test/hdmiin-demo.c
 +++ b/test/hdmiin-demo.c
 @@ -12,6 +12,8 @@
@@ -9,9 +9,9 @@ index 4bf3302..876b3fe 100644
 +static char g_last_mode_str[64] = {0};
 +static int g_last_frac_rate_policy = 0;
  
- static int WriteSysfs(const char *path, const char *cmd)
- {
-@@ -193,6 +195,103 @@ static int FormatHdmitxMode(int width, int height, int fps, char *mode_str, size
+ /* VRR force frame lock for HDMI passthrough low latency mode */
+ #define VRR_DEBUG_PATH        "/sys/class/aml_vrr/vrr2/debug"
+@@ -196,6 +198,103 @@ static int FormatHdmitxMode(int width, int height, int fps, char *mode_str, size
      return 0;
  }
  
@@ -115,7 +115,7 @@ index 4bf3302..876b3fe 100644
  /* Synchronize hdmitx output to match hdmirx input */
  static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper)
  {
-@@ -283,47 +382,16 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
+@@ -286,64 +385,16 @@ static void SynchronizeHdmitxToHdmirx(struct TvClientWrapper_t *pTvClientWrapper
          frac_rate_policy = 0;
      }
  
@@ -151,6 +151,23 @@ index 4bf3302..876b3fe 100644
 -    if (ret == 0) {
 -        LOGD("%s: Successfully set hdmitx mode to: %s (with frac_rate_policy=%d)\n",
 -             __FUNCTION__, mode_str, frac_rate_policy);
+-
+-        /* Wait for HDMI TX to stabilize after mode change */
+-        usleep(200000); /* 200ms delay for TX to stabilize */
+-
+-        /* Enable force VRR frame lock for low latency HDMI passthrough */
+-        LOGD("%s: Enabling force VRR frame lock mode\n", __FUNCTION__);
+-        ret = WriteSysfs(VRR_DEBUG_PATH, "mode 1");
+-        if (ret == 0) {
+-            ret = WriteSysfs(VRR_DEBUG_PATH, "en 1");
+-            if (ret == 0) {
+-                LOGD("%s: Force VRR frame lock enabled successfully\n", __FUNCTION__);
+-            } else {
+-                LOGD("%s: Failed to enable VRR (ret=%d)\n", __FUNCTION__, ret);
+-            }
+-        } else {
+-            LOGD("%s: Failed to set VRR mode (ret=%d)\n", __FUNCTION__, ret);
+-        }
 -    } else {
 -        LOGD("%s: Failed to set hdmitx mode to: %s (ret=%d)\n", __FUNCTION__, mode_str, ret);
 -    }
@@ -169,15 +186,9 @@ index 4bf3302..876b3fe 100644
      return 0;
  
  }
-@@ -485,8 +553,9 @@ int main(int argc, char **argv) {
- 
+@@ -503,6 +554,7 @@ int main(int argc, char **argv) {
  	while (run)
  	{
 +		EnsureHdmitxMode();
  		sleep(1);
  	}
- 
-     return 0;
--}
-\ No newline at end of file
-+}

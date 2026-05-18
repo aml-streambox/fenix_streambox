@@ -52,11 +52,11 @@
           "to": "/usr/lib/liblog.so"
         },
         {
-          "from": "/usr/include/android",
+          "from": ".fenix-staging/usr/include/android",
           "to": "/usr/include/android"
         },
         {
-          "from": "/usr/include/cutils",
+          "from": ".fenix-staging/usr/include/cutils",
           "to": "/usr/include/cutils"
         }
       ]

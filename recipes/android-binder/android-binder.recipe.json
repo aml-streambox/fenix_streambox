@@ -63,11 +63,11 @@
           "to": "/usr/lib/libbinder.so"
         },
         {
-          "from": "/usr/include/binder",
+          "from": ".fenix-staging/usr/include/binder",
           "to": "/usr/include/binder"
         },
         {
-          "from": "/usr/include/utils",
+          "from": ".fenix-staging/usr/include/utils",
           "to": "/usr/include/utils"
         }
       ],

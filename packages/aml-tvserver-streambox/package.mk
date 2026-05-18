@@ -143,7 +143,7 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Architecture: ${DISTRIB_ARCH}
 Maintainer: Khadas <hello@khadas.com>
-Depends: android-binder, aml-audio-service, zlib1g, systemd
+Depends: android-binder, aml-audio-service, vfm-cap-modules, zlib1g, systemd
 Section: utils
 Priority: optional
 Description: Amlogic TV Server Stream Box

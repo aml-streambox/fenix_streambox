@@ -1,15 +1,14 @@
 {
   "schema": "fenix.recipe.v1",
   "name": "vfm-cap",
-  "version": "0.1.0+151732bc",
+  "version": "0.1.0+local1",
   "summary": "VFM capture out-of-tree kernel module",
   "license": "GPL-2.0-or-later",
   "source": {
-    "type": "git",
-    "uri": "https://github.com/aml-streambox/common_drivers.git",
-    "revision": "151732bc99e8235dc0d52585d56287d24a71ae30",
-    "subdir": "drivers/media/vfm_cap"
+    "type": "local",
+    "path": "../reference/streambox/common_drivers_streambox/drivers/media/vfm_cap"
   },
+  "patches": ["patches/add-video-cap-udev-rule.patch"],
   "build": {
     "class": "kernel-module",
     "build_args": []
@@ -31,7 +30,8 @@
       "kernel_modules": [
         {
           "path": "/lib/modules/${kernel_version}/extra/vfm-cap/vfm_cap.ko",
-          "autoload": "vfm_cap"
+          "autoload": "vfm_cap",
+          "udev_rules": ["udev/99-vfm-cap.rules"]
         }
       ]
     }

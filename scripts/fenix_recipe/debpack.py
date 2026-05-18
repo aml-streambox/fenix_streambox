@@ -41,6 +41,7 @@ def _populate_package_root(data: dict[str, Any], output: dict[str, Any], *, inst
 
     if data.get("build", {}).get("class") == "kernel-module":
         _copy_kernel_module_payload(data, install_root=install_root, package_root=package_root)
+        _write_kernel_module_postinst(debian_dir / "postinst")
     _write_kernel_module_metadata(output, install_root=install_root, package_root=package_root)
 
     for mapping in output.get("files", []):
@@ -85,6 +86,20 @@ def _write_kernel_module_metadata(output: dict[str, Any], *, install_root: Path,
         modprobe = package_root / "etc/modprobe.d" / f"{output['package']}.conf"
         modprobe.parent.mkdir(parents=True, exist_ok=True)
         modprobe.write_text("\n".join(options) + "\n", encoding="utf-8")
+
+
+def _write_kernel_module_postinst(path: Path) -> None:
+    path.write_text(
+        "#!/bin/sh\n"
+        "set -e\n"
+        "if command -v depmod >/dev/null 2>&1; then\n"
+        "\tdepmod -a || true\n"
+        "fi\n"
+        "\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
 
 
 def _write_control(data: dict[str, Any], output: dict[str, Any], path: Path) -> None:

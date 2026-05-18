@@ -1,24 +1,24 @@
 {
   "schema": "fenix.recipe.v1",
   "name": "aml-tvserver-streambox",
-  "version": "0+6ce5bf4d60c9d49ce0d12c833f550c25bd323c8a",
+  "version": "1.7.5+di2",
   "summary": "Amlogic TV Server Stream Box",
   "license": "Proprietary",
   "source": {
-    "type": "git",
-    "uri": "https://github.com/anshi233/aml_tvserver_streambox",
-    "revision": "6ce5bf4d60c9d49ce0d12c833f550c25bd323c8a"
+    "type": "local",
+    "path": "../reference/streambox/aml_tvserver_streambox"
   },
   "patches": [
-    "patches/makefile-rootless.patch",
-    "patches/sync-vout-mode-after-hdmitx.patch"
+    "patches/sync-vout-mode-after-hdmitx.patch",
+    "patches/streambox-video-over-osd.patch"
   ],
   "build": {
     "class": "make",
     "env": {
       "OUT_DIR": ".",
       "TVCONFIG_DIR": "{repo_root}/packages/aml-tvserver-streambox/sources/tvconfig",
-      "TVSERVER_SERVICE": "{repo_root}/packages/aml-tvserver-streambox/files/tvserver.service"
+      "TVSERVER_SERVICE": "{repo_root}/packages/aml-tvserver-streambox/files/tvserver.service",
+      "CJSON_DIR": "{repo_root}/packages/aml-audio-hal/sources/utils/cJSON"
     }
   },
   "dependencies": {
@@ -27,7 +27,7 @@
       "android-binder",
       "aml-audio-service"
     ],
-    "native_tools": ["git", "make"]
+    "native_tools": ["make"]
   },
   "outputs": [
     {
@@ -38,6 +38,8 @@
       "runtime_depends": [
         "android-binder",
         "aml-audio-service",
+        "alsa-utils",
+        "vfm-cap-modules",
         "zlib1g",
         "systemd"
       ],
@@ -45,9 +47,15 @@
         {"from": "usr/lib/libtv.so", "to": "/usr/lib/libtv.so"},
         {"from": "usr/lib/libtvclient.so", "to": "/usr/lib/libtvclient.so"},
         {"from": "usr/bin/tvservice", "to": "/usr/bin/tvservice", "mode": "0755"},
+        {"from": "usr/bin/tvtest", "to": "/usr/bin/tvtest", "mode": "0755"},
         {"from": "usr/bin/hdmiin-demo", "to": "/usr/bin/hdmiin-demo", "mode": "0755"},
+        {"from": "usr/bin/streambox-tv", "to": "/usr/bin/streambox-tv", "mode": "0755"},
         {"from": "etc/tvconfig", "to": "/etc/tvconfig"},
-        {"from": "lib/systemd/system/tvserver.service", "to": "/lib/systemd/system/tvserver.service", "mode": "0644"}
+        {"from": "etc/streambox-tv", "to": "/etc/streambox-tv"},
+        {"from": "vendor/etc/tvconfig", "to": "/vendor/etc/tvconfig"},
+        {"from": "vendor/etc/streambox-tv", "to": "/vendor/etc/streambox-tv"},
+        {"from": "usr/lib/systemd/system/tvserver.service", "to": "/usr/lib/systemd/system/tvserver.service", "mode": "0644"},
+        {"from": "usr/lib/systemd/system/streambox-tv.service", "to": "/usr/lib/systemd/system/streambox-tv.service", "mode": "0644"}
       ],
       "sysroot_exports": [
         {"from": "usr/lib/libtv.so", "to": "/usr/lib/libtv.so"},
@@ -55,7 +63,8 @@
         {"from": ".fenix-staging/usr/include/tvclient", "to": "/usr/include/tvclient"}
       ],
       "services": [
-        {"unit": "tvserver.service", "enable": true}
+        {"unit": "tvserver.service", "enable": true},
+        {"unit": "streambox-tv.service", "enable": true}
       ]
     }
   ]
