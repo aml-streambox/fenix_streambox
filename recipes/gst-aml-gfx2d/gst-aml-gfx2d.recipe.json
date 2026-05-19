@@ -1,0 +1,64 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "gst-aml-gfx2d",
+  "version": "0.1+streambox1",
+  "summary": "Amlogic GE2D helper library for GStreamer plugins",
+  "license": "Amlogic; license audit required",
+  "source": {
+    "type": "local",
+    "path": "../../../reference/aml-comp/multimedia/gst-aml-utils/gst-aml-gfx2d"
+  },
+  "build": {
+    "class": "make",
+    "targets": ["clean", "all"]
+  },
+  "dependencies": {
+    "recipes": ["libge2d_deb_aml"],
+    "distro_dev": ["libgstreamer1.0-dev", "libgstreamer-plugins-base1.0-dev"],
+    "native_tools": ["make", "pkg-config"]
+  },
+  "outputs": [
+    {
+      "package": "gst-aml-gfx2d",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic GE2D helper library and headers used by the GE2D GStreamer converter.",
+      "runtime_depends": ["libge2d-deb-aml", "libgstreamer1.0-0", "libgstreamer-plugins-base1.0-0"],
+      "files": [
+        {
+          "from": "usr/lib/libgst-aml-gfx2d.so",
+          "to": "/usr/lib/libgst-aml-gfx2d.so"
+        },
+        {
+          "from": ".fenix-staging/usr/include/gfx_2d.h",
+          "to": "/usr/include/gfx_2d.h"
+        },
+        {
+          "from": ".fenix-staging/usr/include/gst_ge2d.h",
+          "to": "/usr/include/gst_ge2d.h"
+        }
+      ],
+      "sysroot_exports": [
+        {
+          "from": "usr/lib/libgst-aml-gfx2d.so",
+          "to": "/usr/lib/libgst-aml-gfx2d.so"
+        },
+        {
+          "from": ".fenix-staging/usr/include/gfx_2d.h",
+          "to": "/usr/include/gfx_2d.h"
+        },
+        {
+          "from": ".fenix-staging/usr/include/gst_ge2d.h",
+          "to": "/usr/include/gst_ge2d.h"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "streambox_scope": "direct dependency for scoped GE2D/GStreamer port",
+    "source_status": "workspace-local Yocto-origin source; gitlink pin recorded from multimedia affb028; source branch setup pending before edits",
+    "source_repo": "git@github.com:aml-streambox/gst-aml-utils.git",
+    "source_revision": "5e7295a4a259e28f515efa5bcd0ce730cbc0958c"
+  }
+}

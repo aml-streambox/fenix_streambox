@@ -1,0 +1,48 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "gst-plugin-aml-venc",
+  "version": "0.1+streambox1",
+  "summary": "Amlogic Wave521 GStreamer encoder plugin",
+  "license": "Amlogic; license audit required",
+  "source": {
+    "type": "local",
+    "path": "../../../reference/streambox/gst-plugin-venc",
+    "subdir": "multienc-wave521"
+  },
+  "build": {
+    "class": "make",
+    "env": {
+      "GE2D_INCLUDE_DIR": "{repo_root}/../reference/aml-comp/hardware/aml-5.4/amlogic/libge2d/libge2d/include",
+      "ION_INCLUDE_DIR": "{repo_root}/../reference/aml-comp/hardware/aml-5.4/amlogic/libion/include/ion",
+      "MULTIENC_INCLUDE_DIR": "{repo_root}/../reference/aml-comp/hardware/aml-5.4/amlogic/libencoder/multiEnc/amvenc_lib/include"
+    },
+    "targets": ["clean", "all"]
+  },
+  "dependencies": {
+    "recipes": ["gst-aml-drmbufferpool", "libge2d_deb_aml", "libion_deb_aml", "libmultienc_deb_aml"],
+    "distro_dev": ["libegl-dev", "libgles-dev", "libgstreamer1.0-dev", "libgstreamer-plugins-base1.0-dev", "libvulkan-dev", "libwayland-dev"],
+    "native_tools": ["make", "pkg-config"]
+  },
+  "outputs": [
+    {
+      "package": "gstreamer1.0-aml-venc",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic Wave521-backed GStreamer encoder plugin providing amlvenc.",
+      "runtime_depends": ["gst-aml-drmbufferpool", "libegl1", "libge2d-deb-aml", "libgles2", "libgstreamer1.0-0", "libgstreamer-plugins-base1.0-0", "libion-deb-aml", "libmultienc-deb-aml", "libvulkan1", "libwayland-client0", "libwayland-egl1"],
+      "files": [
+        {
+          "from": "usr/lib/gstreamer-1.0/libgstamlvenc.so",
+          "to": "/usr/lib/gstreamer-1.0/libgstamlvenc.so"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "streambox_scope": "scoped Wave521 encoder plugin only; legacy hcodec/jpeg encoders remain out of scope",
+    "source_status": "workspace-local Yocto-origin source on fenix_streambox_port; pinned revision recorded before allocator edits",
+    "source_repo": "git@github.com:aml-streambox/gst-plugin-venc.git",
+    "source_revision": "0ff3d2f25c1c6df4a9cb71d8b583373976ff541a"
+  }
+}

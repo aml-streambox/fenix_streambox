@@ -58,7 +58,7 @@ VENDOR_BLOB_KEYS = {
 REPLACEMENT_KEYS = {"owner", "status"}
 
 SOURCE_TYPES = {"git", "tarball", "local", "vendor-blob"}
-BUILD_CLASSES = {"make", "cmake", "meson", "cargo", "kernel-module", "vendor-blob"}
+BUILD_CLASSES = {"make", "cmake", "meson", "autotools", "cargo", "kernel-module", "vendor-blob"}
 
 
 @dataclass(frozen=True)

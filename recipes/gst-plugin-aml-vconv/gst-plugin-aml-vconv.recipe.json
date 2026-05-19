@@ -1,0 +1,41 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "gst-plugin-aml-vconv",
+  "version": "0.1+streambox1",
+  "summary": "Amlogic GE2D GStreamer video converter plugin",
+  "license": "Amlogic; license audit required",
+  "source": {
+    "type": "local",
+    "path": "../../../reference/aml-comp/multimedia/gst-aml-utils/gst-plugin-conv"
+  },
+  "build": {
+    "class": "autotools"
+  },
+  "dependencies": {
+    "recipes": ["gst-aml-dma-allocator", "gst-aml-drmbufferpool", "gst-aml-gfx2d", "libge2d_deb_aml"],
+    "distro_dev": ["libgstreamer1.0-dev", "libgstreamer-plugins-base1.0-dev"],
+    "native_tools": ["autoreconf", "make", "pkg-config"]
+  },
+  "outputs": [
+    {
+      "package": "gstreamer1.0-aml-vconv",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic GE2D-backed GStreamer video converter plugin providing amlvconv.",
+      "runtime_depends": ["gst-aml-dma-allocator", "gst-aml-drmbufferpool", "gst-aml-gfx2d", "libge2d-deb-aml", "libgstreamer1.0-0", "libgstreamer-plugins-base1.0-0"],
+      "files": [
+        {
+          "from": "usr/lib/gstreamer-1.0/libgstamlvconv.so",
+          "to": "/usr/lib/gstreamer-1.0/libgstamlvconv.so"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "streambox_scope": "scoped GE2D 2D filter plugin only; vfmcap/streamboxsrc remains out of scope",
+    "source_status": "workspace-local Yocto-origin source; gitlink pin recorded from multimedia affb028; source branch setup pending before edits",
+    "source_repo": "git@github.com:aml-streambox/gst-aml-utils.git",
+    "source_revision": "5e7295a4a259e28f515efa5bcd0ce730cbc0958c"
+  }
+}

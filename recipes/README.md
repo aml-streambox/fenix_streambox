@@ -34,6 +34,7 @@ Supported class names are defined up front even if implementation lands incremen
 - `make`
 - `cmake`
 - `meson`
+- `autotools`
 - `cargo`
 - `kernel-module`
 - `vendor-blob`

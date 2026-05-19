@@ -75,6 +75,7 @@ Supported build classes:
 - `make`
 - `cmake`
 - `meson`
+- `autotools`
 - `cargo`
 - `kernel-module`
 - `vendor-blob`

@@ -1,0 +1,41 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "gst-plugin-aml-v4l2dec",
+  "version": "0.1+streambox1",
+  "summary": "Amlogic V4L2 GStreamer decoder plugin",
+  "license": "Amlogic; license audit required",
+  "source": {
+    "type": "local",
+    "path": "../../../reference/aml-comp/multimedia/gst-plugin-aml-v4l2dec"
+  },
+  "build": {
+    "class": "autotools"
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": ["libgstreamer1.0-dev", "libgstreamer-plugins-base1.0-dev"],
+    "native_tools": ["autoreconf", "make", "pkg-config"]
+  },
+  "outputs": [
+    {
+      "package": "gstreamer1.0-aml-v4l2dec",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic V4L2-backed GStreamer decoder plugin registering amlv4l2 decoder elements.",
+      "runtime_depends": ["libgstreamer1.0-0", "libgstreamer-plugins-base1.0-0"],
+      "files": [
+        {
+          "from": "usr/lib/gstreamer-1.0/libgstamlv4l2.so",
+          "to": "/usr/lib/gstreamer-1.0/libgstamlv4l2.so"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "streambox_scope": "scoped V4L2 decoder plugin only",
+    "source_status": "workspace-local Yocto-origin source; gitlink pin recorded from multimedia affb028; source branch setup pending before edits",
+    "source_repo": "git@github.com:aml-streambox/gst-plugin-aml-v4l2dec.git",
+    "source_revision": "d468c4157363c3413164479c8713eeca8b0082fc"
+  }
+}

@@ -12,10 +12,23 @@
     "t7-kernel-modules",
     "t7-aml-legacy-binary-stack"
   ],
-  "recipes": [],
+  "recipes": [
+    "android-liblog",
+    "dma-allocator",
+    "gst-aml-dma-allocator",
+    "gst-aml-drmbufferpool",
+    "gst-aml-gfx2d",
+    "gst-plugin-aml-v4l2dec",
+    "gst-plugin-aml-vconv",
+    "gst-plugin-aml-venc"
+  ],
   "distro_packages": [
     "cockpit",
+    "gstreamer1.0-plugins-bad",
+    "gstreamer1.0-plugins-base",
+    "gstreamer1.0-plugins-good",
+    "gstreamer1.0-tools",
     "kmod"
   ],
-  "notes": "Initial Streambox Debian 12 product selector. Yocto-origin app recipes for Cockpit plugins, gst-manager, one-kvm, libvfmcap, streambox-tv, and full tvserver integration are blocked until their sources are mirrored under the workspace and branched on fenix_streambox_port."
+  "notes": "Initial Streambox Debian 12 product selector. Installs only the scoped Amlogic GStreamer pieces needed for GE2D conversion, V4L2 decode, and Wave521 encode; vfmcap GStreamer capture, gst-manager, one-kvm, Cockpit plugins, and remaining streambox-tv components remain outside this package group until their sources are inventoried and branched."
 }

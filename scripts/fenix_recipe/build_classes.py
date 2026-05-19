@@ -43,6 +43,8 @@ def build_recipe(
         if build_root is None:
             build_root = source_dir / ".fenix-build"
         _build_meson(data, source_dir=source_dir, build_dir=build_root / data["name"], install_root=install_root, target_sysroot=target_sysroot, jobs=jobs)
+    elif build_class == "autotools":
+        _build_autotools(data, source_dir=source_dir, install_root=install_root, target_sysroot=target_sysroot, jobs=jobs)
     elif build_class == "cargo":
         if build_root is None:
             build_root = source_dir / ".fenix-build"
@@ -173,6 +175,55 @@ def _build_meson(
         install_command = ["meson", "install", "-C", str(build_dir), "--no-rebuild"]
         install_command.extend(build.get("install_args", []))
         _run(install_command, env=install_env)
+
+
+def _build_autotools(
+    data: dict[str, Any],
+    *,
+    source_dir: Path,
+    install_root: Path,
+    target_sysroot: Path | None,
+    jobs: int | None,
+) -> None:
+    if not source_dir.is_dir():
+        raise BuildError(f"source directory does not exist: {source_dir}")
+
+    source_dir = source_dir.resolve()
+    install_root = install_root.resolve()
+    install_root.mkdir(parents=True, exist_ok=True)
+    _prepare_legacy_make_dirs(install_root)
+    build = data["build"]
+    env = _build_env(build, target_sysroot=target_sysroot)
+    _set_make_install_env(env, source_dir=source_dir, install_root=install_root, target_sysroot=target_sysroot)
+
+    configure_script = source_dir / "configure"
+    if not configure_script.is_file():
+        _run(["autoreconf", "-fi"], env=env, cwd=source_dir)
+    if not configure_script.is_file():
+        raise BuildError(f"configure script was not generated: {configure_script}")
+
+    configure_args = build.get("configure_args", [])
+    configure_command = [str(configure_script)]
+    if not any(arg.startswith("--prefix=") for arg in configure_args):
+        configure_command.append("--prefix=/usr")
+    cross_compile = env.get("CROSS_COMPILE")
+    if cross_compile and not any(arg.startswith("--host=") for arg in configure_args):
+        configure_command.append(f"--host={cross_compile.rstrip('-')}")
+    configure_command.extend(configure_args)
+    _run(configure_command, env=env, cwd=source_dir)
+
+    build_command = ["make", "-C", str(source_dir)]
+    if jobs is not None and jobs > 0:
+        build_command.append(f"-j{jobs}")
+    build_command.extend(build.get("targets", []))
+    build_command.extend(build.get("build_args", []))
+    _run(build_command, env=env)
+
+    install_target = build.get("install_target", "install")
+    if install_target:
+        install_command = ["make", "-C", str(source_dir), f"DESTDIR={install_root}", install_target]
+        install_command.extend(build.get("install_args", []))
+        _run(install_command, env=env)
 
 
 def _build_cargo(
@@ -328,6 +379,7 @@ def _build_env(build: dict[str, Any], *, target_sysroot: Path | None) -> dict[st
         env.setdefault("PKG_CONFIG_LIBDIR", str(target_sysroot / "usr/lib/pkgconfig") + ":" + str(target_sysroot / "usr/share/pkgconfig"))
         env.setdefault("CPPFLAGS", f"-I{target_sysroot / 'usr/include'}")
         env.setdefault("LDFLAGS", f"-L{target_sysroot / 'usr/lib'}")
+    env.setdefault("PKG_CONFIG", "pkg-config")
     cross_compile = env.get("CROSS_COMPILE")
     if cross_compile:
         env.setdefault("CC", cross_compile + "gcc")
@@ -341,7 +393,7 @@ def _expand_env_value(value: str) -> str:
 
 
 def _prepare_legacy_make_dirs(install_root: Path) -> None:
-    for relative in ("usr/bin", "usr/lib", "usr/include", "etc/init.d", "lib/systemd/system"):
+    for relative in ("usr/bin", "usr/lib", "usr/lib/gstreamer-1.0", "usr/include", "etc/init.d", "lib/systemd/system"):
         (install_root / relative).mkdir(parents=True, exist_ok=True)
 
 
@@ -369,9 +421,9 @@ def _set_make_install_env(env: dict[str, str], *, source_dir: Path, install_root
         env.setdefault("STRIP", cross_compile + "strip")
 
 
-def _run(command: list[str], *, env: dict[str, str]) -> None:
+def _run(command: list[str], *, env: dict[str, str], cwd: Path | None = None) -> None:
     try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=cwd)
     except FileNotFoundError as exc:
         raise BuildError(f"required command not found: {command[0]}") from exc
     except subprocess.CalledProcessError as exc:

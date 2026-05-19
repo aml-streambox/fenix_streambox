@@ -55,6 +55,7 @@ recipe-lint:
 	@./scripts/fenix-recipe validate -v
 	@./scripts/fenix-recipe order >/dev/null
 	@./scripts/fenix-recipe group-select --board TVPRO --distribution Ubuntu --release noble --image-type server --install-type EMMC >/dev/null
+	@./scripts/fenix-recipe group-select --board TVPRO --distribution Streambox --release bookworm --image-type minimal --install-type EMMC >/dev/null
 	@./scripts/fenix-recipe group-select --board VIM4 --distribution Ubuntu --release noble --image-type server --install-type EMMC >/dev/null
 
 uboot-deb: uboot kernel-dtbs

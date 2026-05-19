@@ -1,0 +1,58 @@
+{
+  "schema": "fenix.recipe.v1",
+  "name": "gst-aml-drmbufferpool",
+  "version": "0.1+streambox1",
+  "summary": "Amlogic DRM allocator and bufferpool support for GStreamer",
+  "license": "Amlogic; license audit required",
+  "source": {
+    "type": "local",
+    "path": "../../../reference/aml-comp/multimedia/gst-aml-drmbufferpool1/gst-aml-drmbufferpool-1.0"
+  },
+  "build": {
+    "class": "autotools",
+    "env": {
+      "CFLAGS": "-I{repo_root}/../linux-v7.1-rc1/common_drivers/include/uapi/amlogic/drm -I{repo_root}/../linux-v7.1-rc1/include/uapi"
+    }
+  },
+  "dependencies": {
+    "recipes": [],
+    "distro_dev": ["libdrm-dev", "libgstreamer1.0-dev", "libgstreamer-plugins-base1.0-dev"],
+    "native_tools": ["autoreconf", "make", "pkg-config"]
+  },
+  "outputs": [
+    {
+      "package": "gst-aml-drmbufferpool",
+      "architecture": "arm64",
+      "section": "libs",
+      "priority": "optional",
+      "description": "Amlogic DRM allocator and bufferpool support libraries for GStreamer plugins.",
+      "runtime_depends": ["libdrm2", "libgstreamer1.0-0", "libgstreamer-plugins-base1.0-0"],
+      "files": [
+        {
+          "from": "usr/lib",
+          "to": "/usr/lib"
+        },
+        {
+          "from": "usr/include/gstreamer-1.0/gst",
+          "to": "/usr/include/gstreamer-1.0/gst"
+        }
+      ],
+      "sysroot_exports": [
+        {
+          "from": "usr/lib",
+          "to": "/usr/lib"
+        },
+        {
+          "from": "usr/include/gstreamer-1.0/gst",
+          "to": "/usr/include/gstreamer-1.0/gst"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "streambox_scope": "direct dependency for scoped GE2D/GStreamer port",
+    "source_status": "workspace-local Yocto-origin source; gitlink pin recorded from multimedia affb028; source branch setup pending before edits",
+    "source_repo": "git@github.com:aml-streambox/gst-aml-drmbufferpool1.git",
+    "source_revision": "cd8ec5c7a60e57c28129ad8d89d403c7c66e53b2"
+  }
+}
