@@ -16,8 +16,10 @@ make_target() {
 }
 
 makeinstall_target() {
+	local mali_board="${FENIX_REPO_BOARD:-$KHADAS_BOARD}"
+
 	mkdir -p $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/mali-debs
 	# Remove old debs
 	rm -rf $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/mali-debs/*
-	[ -d ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${KHADAS_BOARD} ] && cp -r ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${KHADAS_BOARD}/* $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/mali-debs || true
+	[ -d ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${mali_board} ] && cp -r ${DISTRIB_RELEASE}/${DISTRIB_ARCH}/${mali_board}/* $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${DISTRIBUTION}-${DISTRIB_RELEASE}/mali-debs || true
 }

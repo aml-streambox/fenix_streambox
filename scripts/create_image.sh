@@ -63,22 +63,22 @@ build_debs() {
 
 	# Build u-boot deb
 	if [ "$KHADAS_BOARD" != "Generic" ]; then
-		build_uboot_deb
+		build_uboot_deb || return -1
 	fi
 
 	# Build linux debs
 	if [ "$FORCE_BUILD_KERNEL_DEB" == "yes" ]; then
 		info_msg "Force build kernel debian package..."
-		build_linux_debs
+		build_linux_debs || return -1
 	else
 		if [[ ! -f $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${LINUX_IMAGE_DEB}_${VERSION}_${DISTRIB_ARCH}.deb ]]; then
-			build_linux_debs
+			build_linux_debs || return -1
 		else
 			# Debs exist, but kernel version changed
 			LINUX_DEB_VER=$(dpkg --info $BUILD_DEBS/$VERSION/$KHADAS_BOARD/${LINUX_IMAGE_DEB}_${VERSION}_${DISTRIB_ARCH}.deb | grep Descr | awk '{print $(NF)}') #' coloring bug
 			LINUX_VER=$(grep "Linux/arm64" $LINUX_DIR/.config | awk '{print $3}')
 			if [ "$LINUX_DEB_VER" != "$LINUX_VER" ]; then
-				build_linux_debs
+				build_linux_debs || return -1
 			fi
 		fi
 	fi

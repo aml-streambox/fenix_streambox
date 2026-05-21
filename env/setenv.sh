@@ -5,7 +5,7 @@
 SRC=$(realpath "${BASH_SOURCE:-$0}"); ROOT=${SRC%/*}/..; CDIR=$PWD
 
 CONFIG_ARGS="KHADAS_BOARD LINUX UBOOT DISTRIBUTION DISTRIB_RELEASE DISTRIB_RELEASE_VERSION
-	     DISTRIB_TYPE DISTRIB_ARCH INSTALL_TYPE "
+	     DISTRIB_TYPE GPU_DRIVER DISTRIB_ARCH INSTALL_TYPE "
 CONFIG_ADDS="COMPRESS_IMAGE INSTALL_TYPE_RAW"
 
 USAGE(){ echo "\
@@ -644,6 +644,100 @@ function choose_distribution_type() {
 	done
 }
 
+gpu_driver_default() {
+	if [ "$PANFROST_SUPPORT" == "yes" ]; then
+		echo "panfrost"
+	else
+		echo "libmali"
+	fi
+}
+
+apply_gpu_driver_choice() {
+	case "$GPU_DRIVER" in
+		panfrost|panforst)
+			export GPU_DRIVER="panfrost"
+			export PANFROST_SUPPORT="yes"
+			export GPU_PLATFORM=""
+			export TVPRO_MALI_PLATFORM=""
+			;;
+		libmali)
+			export GPU_DRIVER="libmali"
+			export PANFROST_SUPPORT="no"
+			if [ "$KHADAS_BOARD" == "TVPRO" ] && [ "$LINUX" == "7.1-rc1" ]; then
+				export TVPRO_MALI_PLATFORM="${TVPRO_MALI_PLATFORM:-wayland}"
+				export GPU_PLATFORM="$TVPRO_MALI_PLATFORM"
+			fi
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+## Choose GPU driver stack
+function choose_gpu_driver() {
+	local DEFAULT_DRIVER DEFAULT_NUM ANSWER index
+	local GPU_DRIVER_ARRAY=("panfrost" "libmali")
+	local GPU_DRIVER_ARRAY_DESC=("Open-source Mesa Panfrost driver" "Vendor Arm Mali binary driver")
+	local GPU_DRIVER_ARRAY_LEN=${#GPU_DRIVER_ARRAY[@]}
+
+	DEFAULT_DRIVER=$(gpu_driver_default)
+	DEFAULT_NUM=2
+	[ "$DEFAULT_DRIVER" == "panfrost" ] && DEFAULT_NUM=1
+
+	case "$GPU_DRIVER" in
+		panforst)
+			GPU_DRIVER="panfrost"
+			;;
+	esac
+	if [ "$GPU_DRIVER" ]; then
+		apply_gpu_driver_choice && return 0
+		[ "$AUTOFILL" -o "$NOASK" ] && return 1
+		wrong_res
+		GPU_DRIVER=
+	fi
+
+	echo_
+	echo_ "Choose GPU driver:"
+
+	for ((i = 0; i < GPU_DRIVER_ARRAY_LEN; i++)); do
+		echo_ "$((${i}+1)). ${GPU_DRIVER_ARRAY[$i]} - ${GPU_DRIVER_ARRAY_DESC[$i]}"
+	done
+
+	[ "$AUTOFILL" -o "$NOASK" ] && GPU_DRIVER="${GPU_DRIVER:-$DEFAULT_DRIVER}" && apply_gpu_driver_choice && return 0
+
+	export GPU_DRIVER=
+	while [ -z "$GPU_DRIVER" ]; do
+		echo_ -n "Which GPU driver would you like? [${DEFAULT_NUM}] "
+		read $SHORT_READ ANSWER
+		[ "$SHORT_READ" ] && echo_
+
+		if [ -z "$ANSWER" ]; then
+			ANSWER="$DEFAULT_NUM"
+		fi
+
+		if [ -n "`echo $ANSWER | sed -n '/^[0-9][0-9]*$/p'`" ]; then
+			if [ $ANSWER -le $GPU_DRIVER_ARRAY_LEN ] && [ $ANSWER -gt 0 ]; then
+				index=$((${ANSWER}-1))
+				GPU_DRIVER="${GPU_DRIVER_ARRAY[$index]}"
+			else
+				wrong_num
+			fi
+		else
+			case "$ANSWER" in
+				panfrost|panforst|libmali)
+					GPU_DRIVER="$ANSWER"
+					;;
+				*)
+					wrong_res
+					;;
+			esac
+		fi
+	done
+
+	apply_gpu_driver_choice
+}
+
 ## Choose distribution arch
 function choose_distribution_architecture() {
 	echo_
@@ -882,6 +976,8 @@ choose_distribution_release      || err DISTRIB_RELEASE || return 1
 oky DISTRIB_RELEASE
 choose_distribution_type         || err DISTRIB_TYPE    || return 1
 oky DISTRIB_TYPE
+choose_gpu_driver                || err GPU_DRIVER     || return 1
+oky GPU_DRIVER
 choose_distribution_architecture || err DISTRIB_ARCH    || return 1
 oky DISTRIB_ARCH
 choose_install_type              || err INSTALL_TYPE    || return 1

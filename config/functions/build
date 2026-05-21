@@ -288,7 +288,7 @@ build_linux() {
 	info_msg "Build linux..."
 	echo "${KERNEL_COMPILER} $KERNEL_COMPILER_PATH"
 	export PATH=$KERNEL_COMPILER_PATH:$PATH
-	make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" $LINUX_DEFCONFIG $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
+	make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" $LINUX_DEFCONFIG $EXTRA_MAKE_ARGS CONFIG_SHELL="bash" || return -1
 	# Merge config fragment if specified
 	if [ -n "$LINUX_DEFCONFIG_FRAGMENT" ]; then
 		FRAGMENT_FILE=""
@@ -305,19 +305,36 @@ build_linux() {
 		if [ -n "$FRAGMENT_FILE" ] && [ -f "$FRAGMENT_FILE" ]; then
 			info_msg "Merging config fragment: $FRAGMENT_FILE"
 			cd "$LINUX_VENDOR_DIR"
-			$LINUX_VENDOR_DIR/scripts/kconfig/merge_config.sh -m -O "$LINUX_VENDOR_DIR" "$LINUX_VENDOR_DIR/.config" "$FRAGMENT_FILE"
-			make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" olddefconfig $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
+			$LINUX_VENDOR_DIR/scripts/kconfig/merge_config.sh -m -O "$LINUX_VENDOR_DIR" "$LINUX_VENDOR_DIR/.config" "$FRAGMENT_FILE" || return -1
+			make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" olddefconfig $EXTRA_MAKE_ARGS CONFIG_SHELL="bash" || return -1
 		else
 			warning_msg "Config fragment not found: $LINUX_DEFCONFIG_FRAGMENT"
 		fi
 	fi
+	if [ -n "$LINUX_DEFCONFIG_FRAGMENT" ] && [ -n "$FRAGMENT_FILE" ]; then
+		local fragment_hash fragment_stamp fragment_state previous_state
+
+		fragment_hash=$(sha256sum "$FRAGMENT_FILE" | awk '{print $1}') || return -1
+		fragment_stamp="$BUILD/.linux-config-fragment-state"
+		fragment_state="$LINUX_DEFCONFIG:$FRAGMENT_FILE:$fragment_hash"
+		previous_state=""
+		[ -f "$fragment_stamp" ] && previous_state=$(cat "$fragment_stamp")
+
+		# Avoid stale modules.order/object files when switching GPU variants.
+		if { [ ! -f "$fragment_stamp" ] && [ -f "$LINUX_VENDOR_DIR/modules.order" ]; } || \
+			{ [ -n "$previous_state" ] && [ "$previous_state" != "$fragment_state" ]; }; then
+			info_msg "Linux config fragment changed, cleaning stale build artifacts..."
+			make ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" clean $EXTRA_MAKE_ARGS CONFIG_SHELL="bash" || return -1
+		fi
+		printf '%s\n' "$fragment_state" > "$fragment_stamp"
+	fi
 	local linux_dtb_targets="${FENIX_KERNEL_DTB_TARGETS:-dtbs}"
 	if [ "${BUILD_LINUX_DTBS_ONLY:-no}" == "yes" ]; then
-		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" $linux_dtb_targets $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
+		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" $linux_dtb_targets $EXTRA_MAKE_ARGS CONFIG_SHELL="bash" || return -1
 	else
-		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" Image $linux_dtb_targets modules $EXTRA_MAKE_ARGS CONFIG_SHELL="bash"
+		make -j${NR_JOBS} ARCH=arm64 CROSS_COMPILE="${CCACHE} ${KERNEL_COMPILER}" Image $linux_dtb_targets modules $EXTRA_MAKE_ARGS CONFIG_SHELL="bash" || return -1
 	fi
-	pack_amlogic_multi_dtb
+	pack_amlogic_multi_dtb || return -1
 }
 
 pack_amlogic_multi_dtb() {
@@ -389,7 +406,7 @@ build_simple_linux_debs() {
 	[ -f "$LINUX_DIR/.config" ] && cp "$LINUX_DIR/.config" "$image_pkgdir/boot/config-$kernel_release"
 
 	make -C "$LINUX_DIR" ARCH=arm64 CROSS_COMPILE="${KERNEL_COMPILER}" \
-		INSTALL_MOD_PATH="$image_pkgdir" INSTALL_MOD_STRIP=1 modules_install
+		INSTALL_MOD_PATH="$image_pkgdir" INSTALL_MOD_STRIP=1 modules_install || return -1
 	extra_moddir="$image_pkgdir/lib/modules/$kernel_release/extra/amlogic"
 	mkdir -p "$extra_moddir"
 	shopt -s globstar nullglob
@@ -397,7 +414,7 @@ build_simple_linux_debs() {
 		cp "$common_ko" "$extra_moddir/"
 	done
 	shopt -u globstar nullglob
-	depmod -b "$image_pkgdir" "$kernel_release"
+	depmod -b "$image_pkgdir" "$kernel_release" || return -1
 	rm -f "$image_pkgdir/lib/modules/$kernel_release/build" \
 		"$image_pkgdir/lib/modules/$kernel_release/source"
 
@@ -443,7 +460,7 @@ build_simple_linux_debs() {
 	EOF
 
 	chmod 755 "$image_pkgdir/DEBIAN/postinst" "$image_pkgdir/DEBIAN/prerm" "$image_pkgdir/DEBIAN/postrm"
-	fakeroot dpkg-deb -b -Zxz "$image_pkgdir" "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${image_pkgname}.deb"
+	fakeroot dpkg-deb -b -Zxz "$image_pkgdir" "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${image_pkgname}.deb" || return -1
 	rm -rf "$image_pkgdir"
 
 	dtb_pkgname="${LINUX_IMAGE_DEB/image/dtb}_${VERSION}_${DISTRIB_ARCH}"
@@ -501,7 +518,7 @@ build_simple_linux_debs() {
 	EOF
 
 	chmod 755 "$dtb_pkgdir/DEBIAN/postinst"
-	fakeroot dpkg-deb -b -Zxz "$dtb_pkgdir" "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${dtb_pkgname}.deb"
+	fakeroot dpkg-deb -b -Zxz "$dtb_pkgdir" "$BUILD_DEBS/$VERSION/$KHADAS_BOARD/${dtb_pkgname}.deb" || return -1
 	rm -rf "$dtb_pkgdir"
 }
 
@@ -535,7 +552,7 @@ build_linux_debs() {
 	    KDEB_PKGVERSION="$VERSION" LOCAL_VERSION="-${VENDOR,,}-${LINUX}" \
 	    KBUILD_DEBARCH="$DISTRIB_ARCH" ARCH=arm64 DEBFULLNAME="Khadas" \
 	    DEBEMAIL="hello@khadas.com" CROSS_COMPILE="${CCACHE} \
-	    ${KERNEL_COMPILER}" CONFIG_SHELL="bash" KDEB_COMPRESS=xz
+	    ${KERNEL_COMPILER}" CONFIG_SHELL="bash" KDEB_COMPRESS=xz || return -1
 
 	mkdir -p "$BUILD_DEBS/$VERSION/$KHADAS_BOARD"
 
